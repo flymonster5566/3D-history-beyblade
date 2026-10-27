@@ -148,6 +148,14 @@
     border-radius:999px; font-size:13px; box-shadow:0 4px 20px rgba(0,0,0,.6); }
   .verTag,.authorTag{ position:fixed; bottom:10px; z-index:2; font-size:12px; letter-spacing:1px; color:#8fb6ef; opacity:.9; pointer-events:none; }
   .verTag{ left:14px; } .authorTag{ right:14px; }
+  .scopeGrid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin:14px 0 6px; }
+  @media(min-width:640px){ .scopeGrid { grid-template-columns:repeat(3,1fr); } }
+  .scopeCard { cursor:pointer; border-radius:12px; padding:14px 8px; background:rgba(20,36,72,.6); border:2px solid rgba(90,150,255,.25); transition:all .15s; }
+  .scopeCard:hover { border-color:rgba(160,210,255,.6); }
+  .scopeCard.sel { border-color:#ffd97a; background:rgba(60,50,20,.5); box-shadow:0 0 14px rgba(255,200,90,.4); }
+  .scopeCard .sk { font-size:22px; font-weight:900; color:#ffe9a8; }
+  .scopeCard .st { font-size:13px; color:#d7e6ff; margin-top:4px; }
+  .scopeCard .sn { font-size:12px; color:#8fb6ef; margin-top:4px; }
 </style>
 <base target="_blank">
 <base target="_blank">
@@ -173,13 +181,13 @@
 
 <!-- 首頁 -->
 <div id="scr-home" class="screen">
-  <div class="verTag">V1.2</div><div class="authorTag">彰化縣芳苑國中曾晨皓老師</div>
+  <div class="verTag">V1.3</div><div class="authorTag">彰化縣芳苑國中曾晨皓老師</div>
   <div class="panel">
     <h1 class="logo">3D 歷史戰鬥陀螺</h1>
     <div class="sub">HISTORY BEYBLADE · 三維戰力評分版</div>
     <p class="tagline">輸入歷史知識，轉化為陀螺戰力！<br>速度 × 力量 × 平衡 × 相關度加成，10 秒內極速分出勝負！</p>
     <div class="dbBar">
-      📚 <b>歷史事件資料庫</b>：已從上傳檔案（歷史課本上冊 15 章節）清洗、格式化並篩選出 <b id="dbCount">0</b> 筆事件，每筆包含標準名稱、代表人物、發生地點、背景說明與關聯關鍵字。<br>
+      📚 <b>歷史事件資料庫</b>：已從上傳檔案（歷史課本六冊題庫：一上～三下）清洗、格式化並篩選出 <b id="dbCount">0</b> 筆事件，每筆包含標準名稱、代表人物、發生地點、背景說明與關聯關鍵字。<br>
       <span style="color:#8fb6ef">你也可以上傳自己的 JSON / CSV / TXT 歷史資料擴充資料庫（格式：名稱,人物,地點,背景）。</span>
       <div class="fileRow">
         <input type="file" id="fileInput" accept=".json,.csv,.txt">
@@ -211,6 +219,18 @@
     <div id="netUrl" style="font-size:11px;color:#8fb6ef;word-break:break-all;max-width:440px;margin:10px auto 0"></div>
     <div id="netStatus" style="margin-top:12px;color:#cfe1ff;font-size:14px;line-height:1.8">建立連線中…</div>
     <div class="btnRow"><button class="btn ghost" id="btnNetCancel">取消返回</button></div>
+  </div>
+</div>
+
+<!-- 出題範圍 -->
+<div id="scr-scope" class="screen hidden">
+  <div class="panel coverPanel">
+    <h2>選擇出題範圍</h2>
+    <p style="color:#9fc4ff;font-size:14px;line-height:1.8">勾選本局要出題的範圍，未勾選的範圍不會出現在這次遊戲中。</p>
+    <div class="scopeGrid" id="scopeGrid"></div>
+    <div id="scopeInfo" style="color:#ffd97a;font-size:14px;font-weight:800;margin-top:6px"></div>
+    <div class="btnRow"><button class="btn ghost" id="btnScopeAll" style="font-size:13px;padding:8px 18px">全選</button><button class="btn ghost" id="btnScopeNone" style="font-size:13px;padding:8px 18px">全不選</button></div>
+    <div class="btnRow"><button class="btn ghost" id="btnScopeBack">返回</button><button class="btn blue" id="btnScopeOk">確認範圍，公布題目 ▸</button></div>
   </div>
 </div>
 
@@ -342,6 +362,126 @@ const SOURCES=[
 ];
 EVENTS.forEach((e,i)=>e.source=SOURCES[i]);
 
+/* ===== 追加題庫（六冊課本：一上～三下）＋分冊範圍 ===== */
+EVENTS.forEach((e,i)=>{ e.grade = i<10?'1u':(i<24?'2u':'3u'); });
+EVENTS[5].source='歷史（上）第4章 晚清變局下的台灣與現代化';
+const GRADES=[
+ {k:'1u',n:'一上',t:'臺灣的歷史（上）'},{k:'1d',n:'一下',t:'臺灣的歷史（下）'},
+ {k:'2u',n:'二上',t:'中國與東亞的歷史（上）'},{k:'2d',n:'二下',t:'中國與東亞的歷史（下）'},
+ {k:'3u',n:'三上',t:'世界的歷史（上）'},{k:'3d',n:'三下',t:'世界的歷史（下）'},
+ {k:'cu',n:'自訂',t:'自訂上傳資料'}];
+const SCOPE={sel:new Set(GRADES.map(g=>g.k))};
+const CHS={
+ '1d':{1:'歷史（一下）單元1 日治時期的政治',2:'歷史（一下）單元2 日治時期的經濟發展',3:'歷史（一下）單元3 日治時期的社會與文化',4:'歷史（一下）單元4 戰後臺灣的政治變遷',5:'歷史（一下）單元5 戰後臺灣的外交'},
+ '2d':{1:'歷史（二下）單元1 中華民國早期的發展',2:'歷史（二下）單元2 舊傳統與新思潮',3:'歷史（二下）單元3 現代國家的建制與挑戰',4:'歷史（二下）單元4 中日戰爭與戰後東亞',5:'歷史（二下）單元5 中國共產政權的發展',6:'歷史（二下）單元6 冷戰時期東亞國家的競合'},
+ '3d':{1:'歷史（三下）單元1 現代國家的建立',2:'歷史（三下）單元2 帝國主義與第一次世界大戰',3:'歷史（三下）單元3 戰間期與第二次世界大戰',4:'歷史（三下）單元4 冷戰與今日世界'}};
+/* [冊別, 單元, 事件名, 代表人物, 地點, 背景說明] */
+const NEWEV=[
+['1d',1,'臺灣民主國與武裝抗日','唐景崧、丘逢甲','臺灣、臺北','1895 年馬關條約割臺後，臺灣官民為抗拒日本接收，成立「臺灣民主國」，推舉巡撫唐景崧為總統、丘逢甲為義軍統領；日軍登陸後民主國迅速瓦解，各地臺民仍起而抵抗。'],
+['1d',1,'六三法與總督專制','臺灣總督','臺北、臺灣總督府','日本在臺設立總督府，並頒布「法律第六十三號」，授權臺灣總督發布具法律效力的命令；總督掌握行政、立法大權並可指揮軍隊、監督司法，形成總督專制。'],
+['1d',1,'西來庵事件','余清芳','噍吧哖、玉井、臺南','1915 年余清芳以西來庵為根據地，利用宗教號召民眾抗日，在噍吧哖地區與日軍激戰，是漢人武裝抗日規模最大的事件，此後漢人改採非武裝的政治社會運動。'],
+['1d',1,'霧社事件','莫那魯道','霧社、南投仁愛','1930 年賽德克族的莫那魯道不滿日本警察的壓迫與強迫勞動，率族人在霧社起事；總督府調動大批軍警鎮壓，事後調整理蕃政策，改採較溫和的同化方式。'],
+['1d',1,'皇民化運動','臺灣總督府','臺灣','1937 年中日戰爭爆發後，總督府鼓勵臺灣人說日語、改用日本姓名、參拜神社，並招募臺灣人前往東南亞協助作戰，企圖強化臺灣人對日本的認同與愛國心。'],
+['1d',2,'蓬萊米改良','磯永吉','臺灣','日治時期總督府委託磯永吉等學者改良臺灣原有稻米品種，研發出符合日本人口味、產量較高的稻米，由於輸日獲利較多，許多農民改種。'],
+['1d',2,'嘉南大圳完工','八田與一','嘉南平原、烏山頭','1930 年由八田與一設計的水利工程完工，是日治時期臺灣規模最大的水利設施，使嘉南平原獲得更穩定的灌溉用水。'],
+['1d',2,'日月潭水力發電所完工','臺灣總督府','日月潭、南投','1934 年完工的水力發電所為當時亞洲最大的發電廠，提供充沛而低廉的電力，配合南進政策與軍需工業的發展。'],
+['1d',2,'新式製糖業的發展','臺灣總督府','臺灣','總督府以資金援助與保護措施吸引日本企業來臺設立新式糖廠，使臺灣獲得「糖業王國」的稱號，但糖廠壓榨蔗農，因此流傳「第一戇，種甘蔗予會社磅」的諺語。'],
+['1d',3,'臺灣文化協會','蔣渭水','臺北','一戰後民族自決思潮瀰漫，臺灣知識分子成立協會，發行臺灣民報、舉辦各種文化活動，傳播新思想以改良社會風氣，是日治時期重要的文化啟蒙運動。'],
+['1d',3,'臺灣議會設置請願運動','林獻堂','臺灣、東京','臺籍知識分子要求設立臺灣議會，進行多次請願；雖未被日本政府接受，卻逐漸喚醒臺灣人的自治、參政觀念。'],
+['1d',4,'二二八事件','陳儀','臺北、全臺各地','1947 年專賣局人員在臺北查緝私菸時誤殺民眾，政府處理失當，引爆民眾長期累積的不滿，全臺陸續爆發衝突，中央派軍鎮壓並實施清鄉。'],
+['1d',4,'戒嚴與動員戡亂','蔣中正','臺灣','1948 年政府制定動員戡亂時期臨時條款以擴大總統職權，1949 年臺灣省政府發布戒嚴令，限制集會、結社、出版、言論等自由並禁止組織政黨，形成威權體制。'],
+['1d',4,'白色恐怖','國民政府、政府','綠島、新生訓導處','1950、60 年代政府以「涉嫌叛亂」、「包庇匪諜」等罪名逮捕民眾，未經公開合理審判便定罪甚至處決，造成許多冤案，並將政治受難者關押於離島監獄。'],
+['1d',4,'雷震事件','雷震','臺北','1960 年雷震等人在自由中國雜誌上批評政府施政、提倡民主政治，並計畫成立「中國民主黨」，因此遭當局逮捕判刑。'],
+['1d',4,'美麗島事件','黃信介、施明德、姚嘉文、陳菊','高雄','1979 年部分黨外人士發行雜誌，並於國際人權日舉行紀念大會，呼籲政府解除戒嚴，活動中群眾與軍警發生衝突，許多人被捕入獄。'],
+['1d',4,'野百合學運','大學生','臺北、中正紀念堂、自由廣場','1990 年 3 月各地大學生聚集在臺北中正紀念堂廣場，提出廢除臨時條款等多項政治改革訴求，政府隨後宣布終止動員戡亂。'],
+['1d',4,'解除戒嚴','蔣經國','臺灣','1987 年總統宣布解除戒嚴，並開放黨禁、報禁，恢復人民集會、結社等基本權利。'],
+['1d',4,'總統直選','李登輝','臺灣','1996 年我國第一次進行總統直選，李登輝成為首任民選總統，此後透過選舉，政黨輪替成為政治發展的常態。'],
+['1d',5,'中華民國退出聯合國','中華民國政府','聯合國、紐約','1971 年聯合國大會將「中國代表權」轉交給中華人民共和國，中華民國宣布退出聯合國，不少國家隨後與我國斷交，改與中華人民共和國建交。'],
+['2d',1,'辛亥革命','孫文','武昌','1911 年清廷將民間集資興建的鐵路收歸國有，引發保路運動並調兵入川，導致武昌守備空虛；革命黨人趁機於 10 月 10 日起事占領武昌，各省紛紛響應宣布獨立。'],
+['2d',1,'中華民國成立與清帝退位','孫文、袁世凱、溥儀','南京','1912 年元旦獨立各省代表在南京成立臨時政府，選舉孫文為臨時大總統；袁世凱與臨時政府達成協議後，宣統皇帝退位，終結中國兩千餘年的皇帝專制。'],
+['2d',1,'二次革命','孫文、袁世凱、宋教仁','上海','1913 年國民黨主導黨務的宋教仁遇刺身亡，輿論懷疑為袁世凱指使，孫文等人起兵討袁，卻迅速潰敗；袁世凱隨後解散國會、廢止臨時約法。'],
+['2d',1,'二十一條要求','袁世凱','北京、山東','1915 年日本趁一戰向中國提出要求，企圖獲得山東等地特權；袁世凱在日本武力脅迫下，於 5 月 9 日接受部分條款，該日被訂為國恥日。'],
+['2d',1,'洪憲帝制','袁世凱','北京','袁世凱製造輿論後宣布稱帝，改國號為「中華帝國」並訂 1916 年為洪憲元年，但遭各界反對，親信與列強也不支持，三月宣布取消帝制，不久病逝。'],
+['2d',1,'護法運動與南北分裂','孫文、段祺瑞','廣州、北京','1917 年段祺瑞掌握北京政府後拒絕恢復臨時約法，孫文號召「護法」，率部分國會議員南下，於廣州另立中華民國軍政府，形成南北對峙。'],
+['2d',2,'新文化運動','陳獨秀、胡適、魯迅、蔡元培','北京大學、上海','1915 年陳獨秀創辦青年雜誌，介紹西方思想、批判傳統，鼓吹「德先生」與「賽先生」；北京大學在蔡元培支持下成為重鎮，胡適、魯迅推廣白話文。'],
+['2d',2,'五四運動','北京各大學學生','北京、天安門','1919 年巴黎和會決定將山東權益移交日本，消息傳回後北京學生示威遊行，高喊「外爭主權，內除國賊」，各城市罷課、罷工、罷市並抵制日貨，北京政府拒簽和約。'],
+['2d',3,'北伐','蔣中正、張學良','廣州、北京','1926 年國民政府軍隊自廣州出發北伐，擊敗各地軍閥；1928 年攻入北京，控制東北的軍閥歸順南京國民政府，中華民國歸於統一。'],
+['2d',3,'清黨與國共決裂','蔣中正','南京、上海','1927 年北伐期間國共雙方爭奪領導權，蔣中正實施「清黨」，以武力清除國民黨內的中共分子並定都南京，國共正式決裂。'],
+['2d',3,'十年建設與廢兩改元','國民政府、蔣中正','南京','1928 至 1937 年國民政府推動十年建設：與列強談判收回關稅自主權，1933 年廢兩改元、1935 年發行法幣，並增建公路鐵路、建立現代化部隊。'],
+['2d',3,'中共長征','中國共產黨','江西、陝西','國民政府自 1930 年起多次圍剿中共，1934 年共軍被迫離開江西根據地突圍西逃，歷經「二萬五千里長征」，最終輾轉抵達陝西北部。'],
+['2d',3,'九一八事變','日本、溥儀','瀋陽、東北','1931 年日本進攻瀋陽並迅速占領東北全境，次年扶植溥儀成立「滿洲國」，但軍政大權皆控制在日人手中。'],
+['2d',3,'西安事變','張學良','西安、陝西','1936 年在陝西剿共的張學良因民間反日情緒升高而立場動搖，劫持前來視察的蔣中正，要求「停止內戰，一致抗日」，國民政府同意後停止剿共。'],
+['2d',4,'七七事變','日軍','盧溝橋、北京','1937 年日軍在北京近郊的盧溝橋附近演習，與中國守軍發生衝突，中日兩國全面開戰；國民政府採「以空間換取時間」策略，後來遷都重慶。'],
+['2d',4,'珍珠港事變','日本','珍珠港、夏威夷','1941 年日本攻擊美國軍事基地並進攻美、英在東南亞的殖民地，太平洋戰爭爆發，中國正式對日宣戰，中日戰爭成為第二次世界大戰的一環。'],
+['2d',4,'中華民國政府遷臺','蔣中正','臺灣','國共內戰中國民政府因民生困苦、無力解決經濟困境而逐漸失去民眾支持，接連敗退；1949 年中華人民共和國成立，中華民國政府遷往臺灣。'],
+['2d',5,'大躍進','毛澤東','中國','中共為提高產量、實現「超英趕美」而推行運動，實施集體生產並「土法煉鋼」，因措施失當與浮誇風，造成連年大饑荒，約二、三千萬人死亡。'],
+['2d',5,'文化大革命','毛澤東','中國','毛澤東鼓動青年學子組成「紅衛兵」，批鬥各級官員並「破四舊」，造成長達十年的浩劫，直到毛澤東逝世才逐漸落幕。'],
+['2d',5,'改革開放','鄧小平','深圳','文革結束後鄧小平掌握政權，推動「對內改革，對外開放」，在深圳等沿海地區設置經濟特區以引進外資與技術，使經濟快速成長，但政治上仍一黨專政。'],
+['2d',5,'六四天安門事件','學生','北京、天安門廣場','各大學學生聚集在天安門廣場，要求民主自由，遭政府鎮壓；事件後以美國為首的西方國家對中國經濟制裁，中共仍堅持改革開放與一黨專政。'],
+['2d',6,'韓戰','北韓、南韓、美國','朝鮮半島','1950 年北韓進攻南韓，以美國為首的聯合國部隊援助南韓，中華人民共和國派志願軍「抗美援朝」，1953 年簽訂停戰協定，以停戰線為界分治至今。'],
+['2d',6,'越戰','美國、北越、南越','越南','1954 年越南分裂為南北越，北越不斷侵擾南越，美國為防範共產勢力擴張而援助南越並派兵參戰，1973 年美軍撤出，1975 年北越占領全境。'],
+['2d',6,'乒乓外交','尼克森、毛澤東','日本、北京、上海','1971 年世界桌球錦標賽中，中美兩國球員意外互動，美國桌球隊受邀訪問中國，被稱為「小球推動大球」，開啟中美關係破冰，尼克森並於次年訪華。'],
+['2d',6,'東南亞國家協會成立','菲律賓、泰國','曼谷','1967 年菲律賓、泰國等國代表簽署宣言，成立區域組織，以維護區域政治與社會穩定為目標；冷戰結束後轉型注重經貿合作，並接納越南等共產國家加入。'],
+['2d',6,'越南船民','越南人','香港','1975 年起大批越南人因恐懼共產黨統治，乘船逃離家鄉，其中許多人前往香港，香港一度成為「第一收容港」，臺灣澎湖也曾收容難民。'],
+['3d',1,'美國獨立革命','華盛頓','北美、波士頓','英國戰後向北美殖民地徵收新稅，殖民地人民認為在英國國會沒有代表而拒絕繳納，發生波士頓茶葉事件；大陸會議決定對英宣戰，任命華盛頓為統帥，進而建國。'],
+['3d',1,'法國大革命','路易十六、國民議會','巴黎','國王為徵新稅召開三級會議，平民代表自行召開國民議會；7 月 14 日巴黎群眾攻陷巴士底監獄，國民議會公布人權宣言，後來推翻王權並處死路易十六。'],
+['3d',1,'拿破崙稱霸歐陸','拿破崙','法國、維也納','拿破崙擊退反法聯軍後掌權，頒布法典並推動改革，征服歐陸大部分地區；聯軍擊敗他後召開會議，恢復舊有政權並維持列強勢力均衡。'],
+['3d',1,'拉丁美洲獨立','玻利瓦','拉丁美洲','19 世紀初土生白人不滿殖民政府，受美國獨立與法國大革命啟發，趁拿破崙占領西、葡兩國之機發動革命，建立許多獨立國家。'],
+['3d',1,'德意志統一','俾斯麥、威廉一世','普魯士、德意志','普魯士首相推動統一，將奧地利排除於邦聯之外，對法國戰勝後各邦同意建立帝國，由普魯士國王威廉一世擔任皇帝。'],
+['3d',1,'義大利統一','馬志尼、加富爾、加里波底','羅馬、義大利','民族主義者以不同方式推動統一，最後在法軍撤離的時機攻克羅馬並定都於此，完成建國。'],
+['3d',2,'帝國主義的擴張','歐美列強','亞洲、非洲','19 世紀歐洲列強、美國、日本等國向海外擴張、掠奪資源並銷售工業產品，以「社會達爾文主義」合理化殖民統治，非洲僅存兩個國家保持獨立。'],
+['3d',2,'第一次世界大戰','斐迪南大公、威爾遜','塞拉耶佛、歐洲','奧匈帝國大公夫婦在塞拉耶佛遭塞爾維亞民族主義者暗殺，兩大軍事陣營相繼捲入；德國實施無限制潛艇政策後美國參戰，同盟國戰敗並簽訂停戰協議。'],
+['3d',2,'巴黎和會與凡爾賽條約','威爾遜、喬治、克里蒙梭','巴黎、凡爾賽','戰後三巨頭召開會議，僅採用部分和平原則並成立國際聯盟，卻簽訂強迫德國負起戰爭罪責、割地賠款並限制軍備的條約，引發德國不滿。'],
+['3d',3,'蘇聯成立','列寧','俄國','1917 年俄國先爆發二月革命推翻帝制，同年十一月列寧發動十月革命建立共產政權，次年與德國停戰，後來國號改為蘇維埃社會主義共和國聯邦。'],
+['3d',3,'經濟大恐慌與新政','羅斯福','美國','1929 年美國股市崩盤引發世界性經濟危機，歐美工廠倒閉、工人失業；1933 年總統推動「新政」，投資公共工程並建立社會福利制度。'],
+['3d',3,'納粹黨崛起','希特勒','德國','一戰後德國經濟困難，群眾不滿凡爾賽條約，支持主張撕毀條約的國家社會主義工人黨；1933 年領袖就任總理，推動領袖崇拜、迫害猶太人並重整軍備。'],
+['3d',3,'法西斯黨奪權','墨索里尼','羅馬、義大利','1922 年義大利法西斯黨領袖以「反共」、「恢復古羅馬光榮」為號召，要求支持者「進軍羅馬」，迫使國王任命他為首相，開始推展極權體制。'],
+['3d',3,'慕尼黑協定','希特勒','慕尼黑','1938 年德國與奧地利合併並企圖占領捷克的蘇臺德區，英、法採姑息政策，與德國簽訂協定承認其占領，以換取和平。'],
+['3d',3,'二戰爆發','希特勒','波蘭','1939 年德國毀約併吞捷克，並與蘇聯簽訂互不侵犯條約後入侵波蘭，英、法因此對德宣戰，歐洲大戰爆發。'],
+['3d',3,'雅爾達會議','邱吉爾、羅斯福、史達林','雅爾達','1945 年歐洲戰事即將結束，英、美、蘇三國領袖會談，討論分區占領德國等戰後規劃，並承認蘇聯在東歐及中國東北的利益以換取其對日宣戰。'],
+['3d',3,'聯合國成立','同盟國','紐約','1945 年 10 月在美國紐約正式成立，取代國際聯盟，下設大會、祕書處、安全理事會等機構，中、美、英、法、蘇為安理會常任理事國並享有否決權。'],
+['3d',4,'馬歇爾計畫','馬歇爾','西歐','1947 年美國國務卿提出計畫，逐年援助西歐各國，使其經濟、社會逐漸穩定，避免共產勢力滲入。'],
+['3d',4,'柏林危機','蘇聯','柏林','1948 年蘇聯不滿西方勢力企圖在占領區成立政府而封鎖西柏林，次年東、西德分別成立政府，後來東德興建圍牆阻止人民前往西德。'],
+['3d',4,'古巴危機','蘇聯、美國','古巴','1962 年蘇聯在古巴興建飛彈基地，威脅美國本土安全，美國封鎖古巴海域，最後蘇聯撤除基地，兩國並建立「熱線」直接溝通。'],
+['3d',4,'以阿衝突','以色列、阿拉伯國家','巴勒斯坦、中東','戰後美、英等國支持猶太人在此地區建立以色列並驅逐當地阿拉伯人，引發鄰近阿拉伯國家不滿，多次爆發戰爭，蘇聯援助阿拉伯聯軍，美國則支援以色列。'],
+['3d',4,'不結盟運動','第三世界國家','亞洲、非洲','1961 年起亞、非等新興獨立國家定期舉辦峰會，不參與美蘇兩大陣營，採行獨立自主的外交政策，逐漸發展成「第三世界」。'],
+['3d',4,'蘇聯解體','戈巴契夫','蘇聯、俄羅斯','1985 年領導人為解決經濟問題推動改革，1990 年起東歐國家民主化、東西德統一，1991 年多個加盟國退出而蘇聯解體，冷戰結束。'],
+['3d',4,'烏俄戰爭','俄羅斯','烏克蘭','2022 年俄羅斯以阻止北大西洋公約組織擴張為由出兵，使世界各國意見分歧，國際局勢更為複雜。']
+];
+(function(){
+  const sp=x=>x.split(/[、（）\/ ]+/).filter(y=>y.length>=2);
+  const GL={}; GRADES.forEach(g=>GL[g.k]=g.t);
+  NEWEV.forEach(r=>{
+    EVENTS.push({name:r[2],aliases:[],person:r[3],personAliases:sp(r[3]),place:r[4],placeAliases:sp(r[4]),era:GL[r[0]],bg:r[5],
+      analysis:'標準事件：'+r[2]+'。代表人物：'+r[3]+'。發生地點：'+r[4]+'。'+r[5],related:[],source:CHS[r[0]][r[1]],grade:r[0]});
+  });
+})();
+function scopePool(){ const a=[]; EVENTS.forEach((e,i)=>{ if(SCOPE.sel.has(e.grade)) a.push(i); }); return a; }
+function renderScope(){
+  const g=$('scopeGrid'); g.innerHTML='';
+  GRADES.forEach(o=>{
+    const n=EVENTS.filter(e=>e.grade===o.k).length; if(!n) return;
+    const on=SCOPE.sel.has(o.k);
+    const c=document.createElement('div'); c.className='scopeCard'+(on?' sel':'');
+    c.innerHTML='<div class="sk">'+(on?'☑ ':'☐ ')+o.n+'</div><div class="st">'+o.t+'</div><div class="sn">'+n+' 題</div>';
+    c.onclick=()=>{ if(on) SCOPE.sel.delete(o.k); else SCOPE.sel.add(o.k); renderScope(); beep(520,0.05,'square',0.08); };
+    g.appendChild(c);
+  });
+  $('scopeInfo').textContent='目前已選 '+scopePool().length+' 題';
+}
+function showScope(){ renderScope(); showScreen('scr-scope'); }
+function confirmScope(){
+  const pool=scopePool();
+  if(!pool.length){ toast('請至少勾選一個範圍'); return; }
+  const idx=pool[Math.floor(Math.random()*pool.length)];
+  if(NET.mode==='online'&&NET.isHost){
+    const msg={type:'start', targetIdx:idx, dur:65000, scope:Array.from(SCOPE.sel)};
+    try{ NET.conn.send(msg); }catch(e){}
+    onData(msg);
+  } else { ac(); showEventScreen(EVENTS[idx], true); }
+}
+
+
 /* =========================================================
    二、十種 3D 戰鬥陀螺圖鑑（外觀不影響戰力）
    ========================================================= */
@@ -431,8 +571,7 @@ function createHostPeer(){
     NET.conn=c; wireConn();
     $('netStatus').textContent='✅ 玩家二已連線！即將公布題目…';
     setTimeout(()=>{
-      const msg={type:'start', targetIdx:Math.floor(Math.random()*EVENTS.length), dur:65000};
-      const go=()=>{ try{ NET.conn.send(msg); }catch(e){} onData(msg); }; // 通知玩家二同步顯示題目
+      const go=()=>{ try{ NET.conn.send({type:'scoping'}); }catch(e){} showScope(); }; // 房主先選範圍
       if(NET.conn.open) go(); else NET.conn.on('open',go);
     },900);
   });
@@ -535,12 +674,14 @@ function checkBothReady(){
 }
 function onData(m){
   if(m.type==='start'){
+    if(m.scope) SCOPE.sel=new Set(m.scope);
     clearInterval(NET.timerIv);
     NET.readyMe=false; NET.readyPeer=false; NET.myData=null; NET.p1data=null; NET.p2data=null; NET.override=null;
     resetPlayers();
     $('btnNext').disabled=false; $('btnNext').textContent='🔄 下一場對戰';
     showEventScreen(EVENTS[m.targetIdx], NET.isHost); // 雙方皆顯示題目（無說明、僅出處），開始按鈕僅房主持有
   }
+  else if(m.type==='scoping'){ $('netStatus').textContent='✅ 已連線！房主正在選擇出題範圍…'; }
   else if(m.type==='begin'){
     toSetup(NET.isHost?1:2);
     startTimer(Date.now()+m.dur); // 雙方各自以「收到開始瞬間」起算，誤差僅網路延遲
@@ -587,12 +728,22 @@ function showEventScreen(t, isHost){
   showScreen('scr-event');
 }
 /* 第一題四選一：正解為目標事件背景，另取三筆事件背景作干擾項並洗牌 */
+function mutateBg(t,sib){
+  let out=t.bg, changed=false;
+  const pp=(t.personAliases||[]).concat([t.person]).filter(x=>x&&x.length>=2).sort((x,y)=>y.length-x.length);
+  const sp=(sib&&sib.person)?sib.person.split(/[（）、\/ ]+/).filter(x=>x.length>=2):[];
+  if(sp.length){ for(const p of pp){ if(out.includes(p)&&!sp.includes(p)){ out=out.split(p).join(sp[0]); changed=true; break; } } }
+  const d=2+Math.floor(Math.random()*6);
+  out=out.replace(/\b(1[0-9]{3})\b/g,m=>{ changed=true; return String(+m+d); });
+  return (changed&&out!==t.bg)?out:null;
+}
 function genEventOptions(){
   const t=G.target, ti=EVENTS.indexOf(t);
   const bi=x=>{ const n=norm(x), st=new Set(); for(let i=0;i<n.length-1;i++) st.add(n.slice(i,i+2)); return st; };
   const tg=bi(t.bg);
-  /* 干擾項取自「最相似」的歷史事件：同章節、因果關聯、同時期、用字重疊高者優先 */
-  const cands=EVENTS.filter(e=>e!==t && e.bg!==t.bg).map(e=>{
+  const all=EVENTS.filter(e=>e!==t && e.bg!==t.bg);
+  const inS=all.filter(e=>SCOPE.sel.has(e.grade));
+  const cands=(inS.length>=3?inS:all).map(e=>{
     const ei=EVENTS.indexOf(e); let sc=0;
     if(e.source && e.source===t.source) sc+=3;
     if((t.related||[]).includes(ei) || (e.related||[]).includes(ti)) sc+=3;
@@ -603,6 +754,8 @@ function genEventOptions(){
     return {e:e, sc:sc};
   }).sort((x,y)=>y.sc-x.sc);
   const opts=[];
+  const mut=mutateBg(t, cands.length?cands[0].e:null); // 與正解幾乎相同、但人物或年份被偷換的選項
+  if(mut) opts.push(mut);
   for(const c of cands){ if(opts.length>=3) break; if(!opts.includes(c.e.bg)) opts.push(c.e.bg); }
   opts.push(t.bg);
   for(let i=opts.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const tmp=opts[i]; opts[i]=opts[j]; opts[j]=tmp; }
@@ -1511,7 +1664,7 @@ function handleFile(file){
       rows.forEach(r=>{
         const name=r[0]; if(!name) return;
         if(EVENTS.some(e=>norm(e.name)===norm(name))) return;
-        EVENTS.push({name:name, aliases:[], person:r[1]||'—', personAliases:[], place:r[2]||'—', placeAliases:[], era:'自訂', bg:r[3]||'（自訂資料）', analysis:'標準事件：'+name+'。代表人物：'+(r[1]||'—')+'。發生地點：'+(r[2]||'—')+'。', related:[], source:'自訂上傳資料'});
+        EVENTS.push({name:name, aliases:[], person:r[1]||'—', personAliases:[], place:r[2]||'—', placeAliases:[], era:'自訂', bg:r[3]||'（自訂資料）', analysis:'標準事件：'+name+'。代表人物：'+(r[1]||'—')+'。發生地點：'+(r[2]||'—')+'。', related:[], source:'自訂上傳資料', grade:'cu'});
         added++;
       });
       $('dbCount').textContent=EVENTS.length;
@@ -1526,7 +1679,7 @@ function bind(){
   $('dbCount').textContent=EVENTS.length;
   $('btnStart').onclick=()=>{
     ac();
-    showEventScreen(EVENTS[Math.floor(Math.random()*EVENTS.length)], true);
+    showScope();
     beep(440,0.1,'square',0.12);
   };
   $('btnOnline').onclick=hostOnline;
@@ -1550,15 +1703,16 @@ function bind(){
   };
   initLauncher();
   $('btnToP2').onclick=()=>toSetup(2);
+  $('btnScopeAll').onclick=()=>{ GRADES.forEach(g=>SCOPE.sel.add(g.k)); renderScope(); };
+  $('btnScopeNone').onclick=()=>{ SCOPE.sel.clear(); renderScope(); };
+  $('btnScopeBack').onclick=()=>{ if(NET.mode==='online'&&NET.isHost) netCancel(); else showScreen('scr-home'); };
+  $('btnScopeOk').onclick=confirmScope;
   $('btnNext').onclick=()=>{
     if(NET.mode==='online'){
       if(NET.isHost){
         clearBattleObjects(); resetDisplayTops();
         BT.active=false; BT.done=false; BT.exploded=false;
-        const idx=Math.floor(Math.random()*EVENTS.length);
-        const msg={type:'start', targetIdx:idx, dur:65000};
-        try{ NET.conn.send(msg); }catch(e){}
-        onData(msg);
+        showScope();
       } else { $('btnNext').textContent='等待房主開始下一局…'; $('btnNext').disabled=true; }
       return;
     }
