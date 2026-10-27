@@ -173,7 +173,7 @@
 
 <!-- 首頁 -->
 <div id="scr-home" class="screen">
-  <div class="verTag">V1.1</div><div class="authorTag">彰化縣芳苑國中曾晨皓老師</div>
+  <div class="verTag">V1.2</div><div class="authorTag">彰化縣芳苑國中曾晨皓老師</div>
   <div class="panel">
     <h1 class="logo">3D 歷史戰鬥陀螺</h1>
     <div class="sub">HISTORY BEYBLADE · 三維戰力評分版</div>
@@ -430,7 +430,11 @@ function createHostPeer(){
     if(NET.conn){ c.close(); return; }
     NET.conn=c; wireConn();
     $('netStatus').textContent='✅ 玩家二已連線！即將公布題目…';
-    setTimeout(()=>{ showEventScreen(EVENTS[Math.floor(Math.random()*EVENTS.length)], true); },900);
+    setTimeout(()=>{
+      const msg={type:'start', targetIdx:Math.floor(Math.random()*EVENTS.length), dur:65000};
+      const go=()=>{ try{ NET.conn.send(msg); }catch(e){} onData(msg); }; // 通知玩家二同步顯示題目
+      if(NET.conn.open) go(); else NET.conn.on('open',go);
+    },900);
   });
   p.on('error',e=>{
     if(e.type==='unavailable-id'&&hostTries<3){ hostTries++; try{p.destroy();}catch(_){ } createHostPeer(); }
