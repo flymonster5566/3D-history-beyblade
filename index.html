@@ -74,6 +74,11 @@
     filter:drop-shadow(0 5px 8px rgba(0,0,0,.55)); pointer-events:none; }
   .beyCard .bn { font-size:13px; font-weight:800; }
   .beyCard .be { font-size:10px; color:#8fb6ef; letter-spacing:.5px; }
+  .optBtn { cursor:pointer; border-radius:10px; padding:10px 12px; font-size:13px; line-height:1.7;
+    text-align:left; color:#d7e6ff; background:rgba(20,36,72,.6); border:2px solid rgba(90,150,255,.25);
+    transition:all .15s; margin-bottom:8px; }
+  .optBtn:hover { border-color:rgba(160,210,255,.6); }
+  .optBtn.sel { border-color:#ffd97a; background:rgba(60,50,20,.55); box-shadow:0 0 12px rgba(255,200,90,.35); }
 
   .coverPanel { text-align:center; }
   .coverPanel h2 { font-size:clamp(24px,5vw,40px); color:#9fdcff; letter-spacing:6px; margin-bottom:14px;
@@ -119,9 +124,9 @@
     background:linear-gradient(180deg,#0c1428,#16233f);
     border:2px solid rgba(110,190,255,.35);
     box-shadow:inset 0 0 18px rgba(0,0,0,.65), 0 0 14px rgba(60,140,255,.12); overflow:hidden; }
-  #launchFill { position:absolute; top:0; left:0; width:100%; height:0%;
-    background:linear-gradient(180deg,rgba(255,200,80,.04),rgba(255,170,40,.5)); }
-  #launchHandle { position:absolute; top:6px; left:50%; margin-left:-25px; width:50px; height:58px;
+  #launchFill { position:absolute; bottom:0; left:0; width:100%; height:0%;
+    background:linear-gradient(0deg,rgba(255,200,80,.04),rgba(255,170,40,.5)); }
+  #launchHandle { position:absolute; bottom:6px; left:50%; margin-left:-25px; width:50px; height:58px;
     border-radius:11px; cursor:grab; touch-action:none;
     background:linear-gradient(180deg,#ffe08a,#ffb63d 55%,#e07f06);
     border:2px solid rgba(120,60,0,.55);
@@ -142,6 +147,7 @@
     background:rgba(10,20,45,.95); border:1px solid #ffd97a; color:#ffe9a8; padding:10px 20px;
     border-radius:999px; font-size:13px; box-shadow:0 4px 20px rgba(0,0,0,.6); }
 </style>
+<base target="_blank">
 <base target="_blank">
 </head>
 <body>
@@ -211,6 +217,8 @@
     <div class="labelPill" style="background:rgba(255,220,120,.15);color:#ffd97a;border:1px solid rgba(255,210,110,.5)">本局目標事件 A</div>
     <div class="eventName" id="evName">—</div>
     <div class="eventBg" id="evBg">—</div>
+    <div id="evSource" class="hidden" style="color:#9fc4ff;font-size:14px;margin-top:10px;letter-spacing:1px"></div>
+    <div id="evWait" class="hidden" style="color:#8fb6ef;font-size:14px;margin-top:16px;letter-spacing:1px">等待房主開始戰鬥…</div>
     <div class="hint">⚠️ 題目僅公布事件名稱與背景，<b style="color:#ffd97a">標準答案的人物與地點不會顯示</b>。<br>
       兩位玩家請依據背景線索：【事件經過欄】描述事件 A 的發生過程——時間、人物、經過、結果越詳細，速度戰力越高；【人物欄】【地點欄】則填寫目標事件 A 的代表人物與發生地點。</div>
     <div class="btnRow"><button class="btn blue" id="btnToP1">一號玩家，請準備 ▸</button></div>
@@ -228,11 +236,11 @@
     <div id="setupTimer" class="hidden" style="text-align:center;font-size:30px;font-weight:900;color:#ffe9a8;letter-spacing:2px;margin-top:12px;text-shadow:0 0 16px rgba(255,190,60,.5)">⏱ 60.0 秒</div>
     <div id="readyStatus" style="text-align:center;margin-top:10px;font-size:14px;min-height:20px;letter-spacing:1px"></div>
     <div class="fieldGrid">
-      <div class="field"><label>【事件經過欄】→ 陀螺 <span class="dim">速度 SPEED</span>（針對 A）</label><input id="inpEvent" placeholder="請描述目標事件 A 的發生經過，越詳細戰力越高"></div>
+      <div class="field"><label>【事件經過欄】→ 陀螺 <span class="dim">速度 SPEED</span>（針對 A）｜四選一選擇題</label><div id="evOptions"></div><input id="inpEvent" type="hidden"></div>
       <div class="field"><label>【人物欄】→ 陀螺 <span class="dim">力量 POWER</span>（針對 A）</label><input id="inpPerson" placeholder="請填寫目標事件 A 的代表人物"></div>
       <div class="field"><label>【地點欄】→ 陀螺 <span class="dim">平衡 BALANCE</span>（針對 A）</label><input id="inpPlace" placeholder="請填寫目標事件 A 的發生地點"></div>
     </div>
-    <div class="hint">💡 「事件經過」依描述詳細度與關鍵事實覆蓋率給分（0–100）；「人物」「地點」與標準答案越相符越高分；事件與目標事件 A 高度相關（同時期／因果／相關戰役）可獲得 <b style="color:#ffd97a">總戰力 +5%</b> 加成。<br>🧿 每款陀螺擁有<b style="color:#ffd97a">獨特能力加成（總上限 10%）</b>——依你的答案強項挑選陀螺是致勝關鍵！<br>⚔️ 三維戰力真實反映於對戰物理：<b style="color:#9fdcff">速度→移動敏捷飄忽</b>、<b style="color:#ff9d9d">力量→火花更巨、震動與推擠更強</b>、<b style="color:#7dffb0">平衡→受擊迅速回穩、常駐盤面中央</b>。</div>
+    <div class="hint">💡 「事件經過」為四選一選擇題：選出目標事件 A 的正確經過，答對 100 分、答錯 0 分；「人物」「地點」與標準答案越相符越高分；事件與目標事件 A 高度相關（同時期／因果／相關戰役）可獲得 <b style="color:#ffd97a">總戰力 +5%</b> 加成。<br>🧿 每款陀螺擁有<b style="color:#ffd97a">獨特能力加成（總上限 10%）</b>——依你的答案強項挑選陀螺是致勝關鍵！<br>⚔️ 三維戰力真實反映於對戰物理：<b style="color:#9fdcff">速度→移動敏捷飄忽</b>、<b style="color:#ff9d9d">力量→火花更巨、震動與推擠更強</b>、<b style="color:#7dffb0">平衡→受擊迅速回穩、常駐盤面中央</b>。</div>
     <div id="launcherWrap">
       <div id="launcher">
         <div class="lTag">RIP CORD LAUNCHER</div>
@@ -240,7 +248,7 @@
           <div id="launchFill"></div>
           <div id="launchHandle"><div class="grip"></div><div class="grip"></div><div class="grip"></div></div>
         </div>
-        <div id="launchHint">⬇ 下拉發射 ⬇</div>
+        <div id="launchHint">⬆ 上拉發射 ⬆</div>
       </div>
     </div>
   </div>
@@ -419,13 +427,7 @@ function createHostPeer(){
     if(NET.conn){ c.close(); return; }
     NET.conn=c; wireConn();
     $('netStatus').textContent='✅ 玩家二已連線！即將公布題目…';
-    setTimeout(()=>{
-      G.target=EVENTS[Math.floor(Math.random()*EVENTS.length)];
-      $('evName').textContent='「'+G.target.name+'」';
-      $('evBg').textContent=G.target.bg;
-      $('btnToP1').textContent='公布題目・雙方同時作答 ▸';
-      showScreen('scr-event');
-    },900);
+    setTimeout(()=>{ showEventScreen(EVENTS[Math.floor(Math.random()*EVENTS.length)], true); },900);
   });
   p.on('error',e=>{
     if(e.type==='unavailable-id'&&hostTries<3){ hostTries++; try{p.destroy();}catch(_){ } createHostPeer(); }
@@ -519,7 +521,7 @@ function checkBothReady(){
   if(NET.mode!=='online'||!NET.isHost) return;
   if(!(NET.readyMe&&NET.readyPeer&&NET.p1data&&NET.p2data)) return;
   computeScores();
-  const override={winnerNum:G.winnerNum, tied:G.tied, tiebreak:G.tiebreak};
+  const override={winnerNum:G.winnerNum, tied:G.tied, tiebreak:G.tiebreak, winRule:G.winRule};
   const msg={type:'battle', p1:NET.p1data, p2:NET.p2data, override:override};
   try{ NET.conn.send(msg); }catch(e){}
   onData(msg);
@@ -527,12 +529,14 @@ function checkBothReady(){
 function onData(m){
   if(m.type==='start'){
     clearInterval(NET.timerIv);
-    G.target=EVENTS[m.targetIdx];
     NET.readyMe=false; NET.readyPeer=false; NET.myData=null; NET.p1data=null; NET.p2data=null; NET.override=null;
     resetPlayers();
     $('btnNext').disabled=false; $('btnNext').textContent='🔄 下一場對戰';
+    showEventScreen(EVENTS[m.targetIdx], NET.isHost); // 雙方皆顯示題目（無說明、僅出處），開始按鈕僅房主持有
+  }
+  else if(m.type==='begin'){
     toSetup(NET.isHost?1:2);
-    startTimer(Date.now()+m.dur); // 雙方各自以「收到題目瞬間」起算，誤差僅網路延遲
+    startTimer(Date.now()+m.dur); // 雙方各自以「收到開始瞬間」起算，誤差僅網路延遲
   }
   else if(m.type==='ready'){
     NET.readyPeer=true;
@@ -554,6 +558,44 @@ function onData(m){
 }
 function norm(s){ return (s||'').toString().trim().replace(/\s+/g,'').replace(/[，。,.!！?？、·]/g,'').toLowerCase(); }
 function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden')); if(id) $(id).classList.remove('hidden'); }
+/* 公布題目畫面：連線模式雙方皆顯示（不含說明、僅附出處），開始戰鬥按鈕僅玩家一（房主）持有 */
+function showEventScreen(t, isHost){
+  G.target=t;
+  $('evName').textContent='「'+t.name+'」';
+  if(NET.mode==='online'){
+    $('evBg').classList.add('hidden');
+    $('evSource').classList.remove('hidden');
+    $('evSource').textContent='📚 題目出處：'+(t.source||'—');
+    $('btnToP1').classList.toggle('hidden', !isHost);
+    $('evWait').classList.toggle('hidden', isHost);
+    $('btnToP1').textContent='⚔️ 開始戰鬥 ▸';
+  } else {
+    $('evBg').classList.remove('hidden');
+    $('evSource').classList.add('hidden');
+    $('evWait').classList.add('hidden');
+    $('btnToP1').classList.remove('hidden');
+    $('evBg').textContent=t.bg;
+    $('btnToP1').textContent='一號玩家，請準備 ▸';
+  }
+  showScreen('scr-event');
+}
+/* 第一題四選一：正解為目標事件背景，另取三筆事件背景作干擾項並洗牌 */
+function genEventOptions(){
+  const t=G.target;
+  const pool=EVENTS.filter(e=>e!==t);
+  for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const tmp=pool[i]; pool[i]=pool[j]; pool[j]=tmp; }
+  const opts=pool.slice(0,3).map(e=>e.bg); opts.push(t.bg);
+  for(let i=opts.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const tmp=opts[i]; opts[i]=opts[j]; opts[j]=tmp; }
+  return opts;
+}
+function renderEventOptions(){
+  const box=$('evOptions'); if(!box) return; box.innerHTML='';
+  genEventOptions().forEach(txt=>{
+    const b=document.createElement('div'); b.className='optBtn'; b.textContent=txt;
+    b.onclick=()=>{ box.querySelectorAll('.optBtn').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); $('inpEvent').value=txt; beep(560,0.06,'square',0.1); };
+    box.appendChild(b);
+  });
+}
 function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2600); }
 
 /* 簡易音效 */
@@ -598,19 +640,8 @@ function extractKeywords(text){
 function scoreProcess(input, target){
   const inp=norm(input);
   if(!inp) return {score:0, label:'未作答', cls:'v-bad'};
-  const kws=extractKeywords(target.bg);
-  let hit=0; kws.forEach(k=>{ if(inp.includes(k)) hit++; });
-  const cov=kws.length? hit/kws.length : 0;
-  const lenPts=Math.min(inp.length,60)/60*40;
-  const nameHit=[target.name].concat(target.aliases).some(a=>{ const n=norm(a); return n.length>=2 && inp.includes(n); });
-  const score=Math.round(Math.min(100, cov*70 + lenPts + (nameHit?15:0)));
-  let label, cls;
-  if(score>=85){ label='詳實完整'; cls='v-ok'; }
-  else if(score>=65){ label='相當詳細'; cls='v-ok'; }
-  else if(score>=45){ label='略有提及'; cls='v-mid'; }
-  else if(score>=20){ label='過於簡略'; cls='v-mid'; }
-  else { label='幾乎未描述'; cls='v-bad'; }
-  return {score, label, cls};
+  const ok = inp===norm(target.bg); // 四選一選擇題：選出目標事件 A 的正確經過
+  return ok? {score:100, label:'選擇正確', cls:'v-ok'} : {score:0, label:'選擇錯誤', cls:'v-bad'};
 }
 function relevanceBonus(player, target, evScore){
   const inp = norm(player.inputs.event);
@@ -639,8 +670,12 @@ function computeScores(){
     sEv.input=p.inputs.event; sPe.input=p.inputs.person; sPl.input=p.inputs.place;
     p.verdicts = {event:sEv, person:sPe, place:sPl};
   });
-  G.tiebreak=null; G.tied=false;
-  if(G.p1.total === G.p2.total){
+  G.winRule=null; G.tiebreak=null; G.tied=false;
+  const boostedWins1 = G.p1.total > G.p2.base; // 加成後總戰力 壓過 對方未加成總戰力
+  const boostedWins2 = G.p2.total > G.p1.base;
+  if(boostedWins1 && !boostedWins2){ G.winnerNum=1; G.winRule='boosted'; }
+  else if(boostedWins2 && !boostedWins1){ G.winnerNum=2; G.winRule='boosted'; }
+  else if(G.p1.total === G.p2.total){
     if(G.p1.speed!==G.p2.speed){ G.tiebreak='speed'; G.winnerNum=G.p1.speed>G.p2.speed?1:2; }
     else if(G.p1.power!==G.p2.power){ G.tiebreak='power'; G.winnerNum=G.p1.power>G.p2.power?1:2; }
     else if(G.p1.balance!==G.p2.balance){ G.tiebreak='balance'; G.winnerNum=G.p1.balance>G.p2.balance?1:2; }
@@ -988,7 +1023,7 @@ function genKeys(side, isWinner, stat, oppPow){
 function startBattle(){
   showScreen(null); // 隱藏玩家輸入介面，露出 3D 對戰場景
   computeScores();
-  if(NET.override){ G.winnerNum=NET.override.winnerNum; G.tied=NET.override.tied; G.tiebreak=NET.override.tiebreak; G.loserNum=G.winnerNum===1?2:1; NET.override=null; }
+  if(NET.override){ G.winnerNum=NET.override.winnerNum; G.tied=NET.override.tied; G.tiebreak=NET.override.tiebreak; G.winRule=NET.override.winRule; G.loserNum=G.winnerNum===1?2:1; NET.override=null; }
   if(!BEYS[G.p1.bey]) G.p1.bey=0;
   if(!BEYS[G.p2.bey]) G.p2.bey=0;
   const wp=G.winnerNum===1?G.p1:G.p2, lp=G.loserNum===1?G.p1:G.p2;
@@ -1234,10 +1269,8 @@ function aiComment(pnum, key){
   const inp=escapeHtml((v.input||'').trim());
   let s;
   if(key==='event'){
-    if(score>=85)      s='描述詳實完整，時間、人物、經過、結果皆有涵蓋，展現紮實的史實掌握度';
-    else if(score>=65) s='描述相當詳細，已涵蓋事件 A 多數關鍵事實，可再補上時間或結果等細節';
-    else if(score>=45) s='「'+inp+'」僅略述事件 A 梗概，關鍵事實覆蓋不足，建議複習發生過程';
-    else if(score>0)   s='「'+inp+'」過於簡略或偏離事件 A 脈絡，請翻閱課文重新整理經過';
+    if(score>=100)     s='選擇正確！精準判斷目標事件 A 的發生經過，展現紮實的史實掌握度';
+    else if(score>0)   s='所選選項並非事件 A 的正確經過，建議複習「'+escapeHtml(t.name)+'」的發生過程';
     else               s='未作答，無法評分；建議複習目標事件的發生過程';
   }
   else if(score>=85)   s='答案「'+inp+'」'+(score===100?'與':'已涵蓋')+'標準答案「'+escapeHtml(correct)+'」，時空定位精準'+(score===100?'，給予滿分評價':'');
@@ -1253,7 +1286,8 @@ function showResult(){
   const w=G.winnerNum===1?G.p1:G.p2, l=G.loserNum===1?G.p1:G.p2;
   const wb=BEYS[(G.winnerNum===1?G.p1:G.p2).bey], lb=BEYS[(G.loserNum===1?G.p1:G.p2).bey];
   let titleTxt;
-  if(G.tiebreak==='random') titleTxt='⚖️ 總戰力與三項單項戰力完全相同！經亂數抽籤，由「'+G.winnerNum+' 號玩家」獲勝';
+  if(G.winRule==='boosted') titleTxt='⚡「'+G.winnerNum+' 號玩家」加成後總戰力 '+w.total+' 分 壓制對方未加成總戰力 '+l.base+' 分，獲勝！';
+  else if(G.tiebreak==='random') titleTxt='⚖️ 總戰力與三項單項戰力完全相同！經亂數抽籤，由「'+G.winnerNum+' 號玩家」獲勝';
   else if(G.tiebreak) titleTxt='⚖️ 總戰力平手！依「'+({speed:'速度',power:'力量',balance:'平衡'})[G.tiebreak]+'」單項戰力比對，由「'+G.winnerNum+' 號玩家」獲勝';
   else titleTxt=(G.loserNum===1?'一號陀螺爆裂！':'二號陀螺爆裂！')+'「'+G.winnerNum+' 號玩家」獲勝！';
   $('resTitle').textContent=titleTxt;
@@ -1268,6 +1302,7 @@ function showResult(){
     '<tr><th>陀螺能力加成<br><span style="font-weight:400;font-size:11px;color:#9fc4ff">各款獨特・總上限10%</span></th>'+
     '<td style="color:#ffd97a;font-weight:700">'+boostText(BEYS[G.p1.bey])+'</td>'+
     '<td style="color:#ffd97a;font-weight:700">'+boostText(BEYS[G.p2.bey])+'</td></tr>'+
+    '<tr><th>未加成總戰力<br><span style="font-weight:400;font-size:11px;color:#9fc4ff">三維原始合計・勝負判定基準</span></th><td style="font-weight:700">'+G.p1.base+' 分</td><td style="font-weight:700">'+G.p2.base+' 分</td></tr>'+
     '<tr class="totalRow"><th>最終總戰力</th><td class="'+(G.winnerNum===1?'winRow':'')+'">'+G.p1.total+' 分'+(G.winnerNum===1?' 🏆':'')+'</td>'+
     '<td class="'+(G.winnerNum===2?'winRow':'')+'">'+G.p2.total+' 分'+(G.winnerNum===2?' 🏆':'')+'</td></tr></table>';
   $('resTable').innerHTML=rows;
@@ -1326,15 +1361,15 @@ function initLauncher(){
   });
   h.addEventListener('pointermove',e=>{
     if(!launchDrag) return;
-    const dy=e.clientY-launchDrag.y0+ (h._cur||0)*0; // 以按下點為基準
+    const dy=launchDrag.y0-e.clientY; // 由下往上拉，以按下點為基準
     launchDrag.cur=Math.max(0,Math.min(max(), dy));
     h._cur=launchDrag.cur;
-    h.style.transform='translateY('+launchDrag.cur+'px)';
+    h.style.transform='translateY('+(-launchDrag.cur)+'px)';
     const p=launchDrag.cur/max();
     $('launchFill').style.height=(p*100)+'%';
     const hint=$('launchHint');
     if(p>0.75){ hint.textContent='🚀 放開發射！'; hint.style.color='#7dffb0'; }
-    else { hint.textContent='⬇ 繼續下拉 ⬇'; hint.style.color='#9fc4ff'; }
+    else { hint.textContent='⬆ 繼續上拉 ⬆'; hint.style.color='#9fc4ff'; }
   });
   const end=()=>{
     if(!launchDrag) return;
@@ -1374,9 +1409,9 @@ function fireLauncher(){
     resetLauncher(true);
     return;
   }
-  // 拉到底：握把彈入底部、發射音效
+  // 拉到底：握把彈入頂部、發射音效
   h.style.transition='transform .15s ease-in';
-  h.style.transform='translateY('+maxPullPx()+'px)';
+  h.style.transform='translateY('+(-maxPullPx())+'px)';
   h._cur=maxPullPx();
   $('launchFill').style.height='100%';
   beep(160,0.28,'sawtooth',0.3); setTimeout(()=>beep(540,0.12,'square',0.2),110);
@@ -1409,12 +1444,13 @@ function toSetup(playerNum){
   $('setupTarget').textContent='「'+G.target.name+'」';
   $('setupBg').textContent='📜 '+G.target.bg;
   renderBeyGrid();
+  renderEventOptions();
   $('inpEvent').value=''; $('inpPerson').value=''; $('inpPlace').value='';
   ['inpEvent','inpPerson','inpPlace'].forEach(id=>$(id).disabled=false);
   $('readyStatus').textContent='';
   unlockLauncher();
   resetLauncher(false);
-  $('launchHint').textContent = NET.mode==='online' ? '⬇ 下拉準備射擊 ⬇' : '⬇ 下拉發射 ⬇';
+  $('launchHint').textContent = NET.mode==='online' ? '⬆ 上拉準備射擊 ⬆' : '⬆ 上拉發射 ⬆';
   $('launchHint').style.color='#9fc4ff';
   showScreen('scr-setup');
 }
@@ -1472,11 +1508,8 @@ function bind(){
   $('dbCount').textContent=EVENTS.length;
   $('btnStart').onclick=()=>{
     ac();
-    G.target=EVENTS[Math.floor(Math.random()*EVENTS.length)];
-    $('evName').textContent='「'+G.target.name+'」';
-    $('evBg').textContent=G.target.bg;
-    $('btnToP1').textContent='一號玩家，請準備 ▸';
-    showScreen('scr-event'); beep(440,0.1,'square',0.12);
+    showEventScreen(EVENTS[Math.floor(Math.random()*EVENTS.length)], true);
+    beep(440,0.1,'square',0.12);
   };
   $('btnOnline').onclick=hostOnline;
   $('btnJoinShow').onclick=showJoinScreen;
@@ -1489,9 +1522,8 @@ function bind(){
   };
   $('btnNetCancel').onclick=netCancel;
   $('btnToP1').onclick=()=>{
-    if(NET.mode==='online'&&NET.isHost){ // 公布題目，雙方同步進入作答
-      const idx=EVENTS.indexOf(G.target);
-      const msg={type:'start', targetIdx:idx, dur:65000}; // 相時制：各自收到時起算，保證同步
+    if(NET.mode==='online'&&NET.isHost){ // 開始戰鬥按鈕僅玩家一（房主）持有：雙方同步進入作答
+      const msg={type:'begin', dur:65000}; // 相時制：各自收到時起算，保證同步
       try{ NET.conn.send(msg); }catch(e){}
       onData(msg);
       return;
