@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>3D 歷史戰鬥陀螺｜History Beyblade 3D</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#05070f;
+    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; color:#eaf2ff; }
+  #stage { position:fixed; inset:0; }
+  #stage canvas { display:block; }
+
+  .screen { position:fixed; inset:0; z-index:10; display:flex; align-items:center; justify-content:center;
+    background:rgba(4,8,18,.55); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px);
+    overflow-y:auto; padding:18px; }
+  .hidden { display:none !important; }
+
+  .panel { width:100%; max-width:880px; background:linear-gradient(160deg, rgba(16,26,48,.96), rgba(8,12,26,.96));
+    border:1px solid rgba(110,190,255,.28); border-radius:18px; padding:26px 24px;
+    box-shadow:0 0 40px rgba(40,120,255,.18), inset 0 0 60px rgba(30,80,180,.08);
+    max-height:92vh; overflow-y:auto; }
+  h1.logo { font-size:clamp(26px,5vw,44px); font-weight:900; text-align:center; letter-spacing:2px;
+    background:linear-gradient(180deg,#ffe9a8,#ffb63d 55%,#ff7a1a); -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 0 30px rgba(255,160,40,.25); }
+  .sub { text-align:center; color:#9fc4ff; font-size:13px; letter-spacing:4px; margin-top:4px; }
+  .tagline { text-align:center; color:#cfe1ff; font-size:14px; margin:14px 0 6px; line-height:1.7; }
+
+  .btn { display:inline-block; border:none; cursor:pointer; font-family:inherit; font-weight:800;
+    font-size:17px; letter-spacing:2px; color:#1a1206; padding:13px 30px; border-radius:999px;
+    background:linear-gradient(180deg,#ffe08a,#ffb63d 60%,#f08c0a);
+    box-shadow:0 4px 18px rgba(255,170,40,.45), inset 0 1px 0 rgba(255,255,255,.7);
+    transition:transform .12s, box-shadow .12s; }
+  .btn:hover { transform:translateY(-2px) scale(1.03); box-shadow:0 8px 26px rgba(255,170,40,.6); }
+  .btn:active { transform:scale(.97); }
+  .btn.blue { color:#04101f; background:linear-gradient(180deg,#9fdcff,#3fa9f5 60%,#1c6fd6); box-shadow:0 4px 18px rgba(60,150,255,.45); }
+  .btn.ghost { color:#cfe1ff; background:rgba(80,140,255,.12); border:1px solid rgba(120,190,255,.4); box-shadow:none; font-weight:600; }
+  .btnRow { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:18px; }
+
+  .dbBar { margin-top:18px; padding:12px 14px; border-radius:12px; background:rgba(60,120,255,.08);
+    border:1px dashed rgba(120,190,255,.35); font-size:13px; color:#bcd6ff; line-height:1.8; }
+  .dbBar b { color:#ffd97a; }
+  .fileRow { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px; }
+  input[type=file] { font-size:12px; color:#9fc4ff; }
+
+  .eventCard { text-align:center; padding:8px 4px; }
+  .eventName { font-size:clamp(24px,4.6vw,38px); font-weight:900; color:#ffe9a8;
+    text-shadow:0 0 24px rgba(255,200,80,.35); margin:10px 0; }
+  .eventBg { color:#d7e6ff; font-size:15px; line-height:1.9; max-width:620px; margin:0 auto;
+    background:rgba(30,60,130,.18); border-left:3px solid #4aa3ff; border-radius:8px; padding:14px 18px; text-align:left; }
+  .hint { color:#8fb6ef; font-size:12.5px; margin-top:14px; line-height:1.8; }
+  .labelPill { display:inline-block; padding:4px 14px; border-radius:999px; font-weight:800; font-size:15px; letter-spacing:2px; }
+  .p1 { background:linear-gradient(180deg,#ffd97a,#f5a623); color:#221503; }
+  .p2 { background:linear-gradient(180deg,#9fdcff,#2f8fe8); color:#04101f; }
+
+  .fieldGrid { display:grid; grid-template-columns:1fr; gap:12px; margin-top:14px; }
+  @media(min-width:640px){ .fieldGrid { grid-template-columns:1fr 1fr 1fr; } }
+  .field label { display:block; font-size:13px; font-weight:700; color:#9fd0ff; margin-bottom:6px; letter-spacing:1px; }
+  .field label span.dim { color:#ffd97a; }
+  .field input { width:100%; font-size:16px; font-family:inherit; color:#fff; padding:12px 14px; border-radius:10px;
+    background:rgba(20,40,90,.5); border:1px solid rgba(110,190,255,.35); outline:none; transition:border .15s, box-shadow .15s; }
+  .field input:focus { border-color:#ffd97a; box-shadow:0 0 12px rgba(255,200,90,.3); }
+
+  .beyGrid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:14px; }
+  @media(min-width:640px){ .beyGrid { grid-template-columns:repeat(5,1fr); } }
+  .beyCard { cursor:pointer; border-radius:12px; padding:10px 8px; text-align:center;
+    background:rgba(20,36,72,.6); border:2px solid rgba(90,150,255,.25); transition:all .15s; }
+  .beyCard:hover { border-color:rgba(160,210,255,.6); transform:translateY(-2px); }
+  .beyCard.sel { border-color:#ffd97a; box-shadow:0 0 16px rgba(255,200,90,.45); background:rgba(60,50,20,.5); }
+    .beyImg { width:100%; height:76px; object-fit:contain; margin-bottom:6px;
+    filter:drop-shadow(0 5px 8px rgba(0,0,0,.55)); pointer-events:none; }
+  .beyCard .bn { font-size:13px; font-weight:800; }
+  .beyCard .be { font-size:10px; color:#8fb6ef; letter-spacing:.5px; }
+
+  .coverPanel { text-align:center; }
+  .coverPanel h2 { font-size:clamp(24px,5vw,40px); color:#9fdcff; letter-spacing:6px; margin-bottom:14px;
+    text-shadow:0 0 26px rgba(80,170,255,.5); }
+  .lockIcon { font-size:56px; margin-bottom:8px; }
+
+  #hud { position:fixed; inset:0; z-index:9; pointer-events:none; }
+  .hpBox { position:absolute; top:12px; width:min(42vw,320px); }
+  .hpBox.left { left:14px; } .hpBox.right { right:14px; text-align:right; }
+  .hpName { font-size:12.5px; font-weight:800; margin-bottom:5px; text-shadow:0 1px 4px #000; }
+  .hpTrack { height:16px; border-radius:999px; background:rgba(0,0,0,.55); border:1px solid rgba(140,200,255,.4); overflow:hidden; }
+  .hpFill { height:100%; width:100%; border-radius:999px; transition:width .25s;
+    background:linear-gradient(90deg,#ff4d4d,#ffb63d 45%,#5dff8f); }
+  .hpNum { font-size:11px; color:#cfe1ff; margin-top:3px; }
+  #battleMsg { position:absolute; left:50%; top:20%; transform:translateX(-50%); font-size:clamp(20px,4vw,34px);
+    font-weight:900; color:#ffe9a8; text-shadow:0 0 20px rgba(255,150,40,.8),0 2px 6px #000; letter-spacing:3px;
+    opacity:0; transition:opacity .2s; white-space:nowrap; }
+  #countOverlay { position:fixed; inset:0; z-index:11; display:flex; align-items:center; justify-content:center;
+    pointer-events:none; }
+  #countNum { font-size:clamp(70px,16vw,150px); font-weight:900; color:#ffe9a8;
+    text-shadow:0 0 50px rgba(255,180,50,.8); }
+
+  table.score { width:100%; border-collapse:collapse; margin-top:14px; font-size:13px; }
+  table.score th, table.score td { border:1px solid rgba(110,190,255,.25); padding:9px 8px; text-align:center; vertical-align:middle; }
+  table.score th { background:rgba(40,90,190,.3); color:#ffe9a8; letter-spacing:1px; }
+  table.score td inputView { display:block; }
+  .inpTxt { font-weight:700; color:#fff; }
+  .verd { font-size:11.5px; padding:2px 8px; border-radius:999px; display:inline-block; margin-top:4px; }
+  .v-ok { background:rgba(60,220,120,.2); color:#7dffb0; border:1px solid rgba(60,220,120,.5); }
+  .v-mid { background:rgba(255,190,60,.18); color:#ffd97a; border:1px solid rgba(255,190,60,.5); }
+  .v-bad { background:rgba(255,80,80,.18); color:#ff9d9d; border:1px solid rgba(255,80,80,.5); }
+  .totalRow td { font-size:16px; font-weight:900; background:rgba(255,200,80,.1); color:#ffe9a8; }
+  .winRow td { background:rgba(60,220,120,.12); }
+  .resultTitle { text-align:center; font-size:clamp(20px,4.4vw,32px); font-weight:900; color:#ffe9a8;
+    text-shadow:0 0 26px rgba(255,180,60,.4); margin-bottom:6px; }
+  .analysisBox { margin-top:16px; padding:14px 16px; border-radius:12px; background:rgba(20,45,100,.28);
+    border:1px solid rgba(110,190,255,.3); font-size:13.5px; line-height:1.9; color:#d7e6ff; }
+  .analysisBox h3 { color:#9fdcff; font-size:15px; margin-bottom:6px; letter-spacing:2px; }
+  /* 戰鬥陀螺發射器拉桿 */
+  #launcherWrap { display:flex; flex-direction:column; align-items:center; gap:8px; margin-top:18px; user-select:none; -webkit-user-select:none; }
+  .lTag { font-size:11px; letter-spacing:4px; color:#8fb6ef; font-weight:800; }
+  #launchTrack { position:relative; width:66px; height:172px; border-radius:16px;
+    background:linear-gradient(180deg,#0c1428,#16233f);
+    border:2px solid rgba(110,190,255,.35);
+    box-shadow:inset 0 0 18px rgba(0,0,0,.65), 0 0 14px rgba(60,140,255,.12); overflow:hidden; }
+  #launchFill { position:absolute; top:0; left:0; width:100%; height:0%;
+    background:linear-gradient(180deg,rgba(255,200,80,.04),rgba(255,170,40,.5)); }
+  #launchHandle { position:absolute; top:6px; left:50%; margin-left:-25px; width:50px; height:58px;
+    border-radius:11px; cursor:grab; touch-action:none;
+    background:linear-gradient(180deg,#ffe08a,#ffb63d 55%,#e07f06);
+    border:2px solid rgba(120,60,0,.55);
+    box-shadow:0 5px 12px rgba(0,0,0,.55), inset 0 2px 0 rgba(255,255,255,.65);
+    display:flex; flex-direction:column; justify-content:space-evenly; align-items:center; padding:9px 0; }
+  #launchHandle.dragging { cursor:grabbing; box-shadow:0 8px 18px rgba(0,0,0,.65), inset 0 2px 0 rgba(255,255,255,.65); }
+  #launchHandle.locked { filter:saturate(.35) brightness(.72); cursor:default; }
+  #launchHandle .grip { width:62%; height:5px; border-radius:3px; background:rgba(120,50,0,.55);
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.55); }
+  #launcher.fired #launchHandle { background:linear-gradient(180deg,#a9ffc0,#3fd47a 55%,#0f9c4b);
+    border-color:rgba(0,80,30,.6); }
+  #launcher.fired #launchTrack { border-color:rgba(80,255,150,.55); }
+  #launchHint { font-size:13.5px; font-weight:800; letter-spacing:2px; color:#9fc4ff; transition:color .15s; }
+  @keyframes lshake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-8px);} 75%{transform:translateX(8px);} }
+  #launcherWrap.shake { animation:lshake .12s 4; }
+
+  .toast { position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:20;
+    background:rgba(10,20,45,.95); border:1px solid #ffd97a; color:#ffe9a8; padding:10px 20px;
+    border-radius:999px; font-size:13px; box-shadow:0 4px 20px rgba(0,0,0,.6); }
+</style>
+<base target="_blank">
+</head>
+<body>
+<div id="stage"></div>
+
+<!-- 對戰 HUD -->
+<div id="hud" class="hidden">
+  <div class="hpBox left">
+    <div class="hpName" id="hpName1">一號玩家</div>
+    <div class="hpTrack"><div class="hpFill" id="hpFill1"></div></div>
+    <div class="hpNum" id="hpNum1">100</div>
+  </div>
+  <div class="hpBox right">
+    <div class="hpName" id="hpName2">二號玩家</div>
+    <div class="hpTrack"><div class="hpFill" id="hpFill2"></div></div>
+    <div class="hpNum" id="hpNum2">100</div>
+  </div>
+  <div id="battleMsg"></div>
+</div>
+<div id="countOverlay" class="hidden"><div id="countNum">3</div></div>
+
+<!-- 首頁 -->
+<div id="scr-home" class="screen">
+  <div class="panel">
+    <h1 class="logo">3D 歷史戰鬥陀螺</h1>
+    <div class="sub">HISTORY BEYBLADE · 三維戰力評分版</div>
+    <p class="tagline">輸入歷史知識，轉化為陀螺戰力！<br>速度 × 力量 × 平衡 × 相關度加成，10 秒內極速分出勝負！</p>
+    <div class="dbBar">
+      📚 <b>歷史事件資料庫</b>：已從上傳檔案（歷史課本上冊 15 章節）清洗、格式化並篩選出 <b id="dbCount">0</b> 筆事件，每筆包含標準名稱、代表人物、發生地點、背景說明與關聯關鍵字。<br>
+      <span style="color:#8fb6ef">你也可以上傳自己的 JSON / CSV / TXT 歷史資料擴充資料庫（格式：名稱,人物,地點,背景）。</span>
+      <div class="fileRow">
+        <input type="file" id="fileInput" accept=".json,.csv,.txt">
+        <button class="btn ghost" id="btnFile" style="font-size:13px;padding:8px 16px;">載入檔案</button>
+      </div>
+    </div>
+    <div class="btnRow">
+      <button class="btn" id="btnStart">🌀 單機對戰（同機輪流）</button>
+      <button class="btn blue" id="btnOnline">🌐 連線對戰（QR 邀請）</button>
+      <button class="btn ghost" id="btnJoinShow">📡 加入對戰（輸入房間 ID）</button>
+    </div>
+  </div>
+</div>
+
+<!-- 連線對戰 -->
+<div id="scr-net" class="screen hidden">
+  <div class="panel coverPanel">
+    <h2 id="netTitle">建立對戰房間</h2>
+    <div id="qrBox" style="margin:12px auto;width:210px;height:210px;background:#fff;padding:8px;border-radius:14px;display:flex;align-items:center;justify-content:center"></div>
+    <div id="hostIdBox" class="hidden" style="margin-top:10px;font-size:15px">🏠 房間 ID：<b id="hostId" style="font-size:24px;letter-spacing:3px;color:#ffe9a8;text-shadow:0 0 14px rgba(255,190,60,.5)"></b></div>
+    <div class="btnRow hidden" id="copyRow" style="margin-top:8px"><button class="btn ghost" id="btnCopyId" style="font-size:13px;padding:8px 18px">📋 複製 ID 與網址</button></div>
+    <div id="joinBox" class="hidden" style="margin-top:14px">
+      <div style="color:#9fc4ff;font-size:13px;margin-bottom:8px;line-height:1.7">玩家二：向房主取得「房間 ID」輸入後即可加入<br><span style="color:#8fb6ef;font-size:12px">（兩台裝置各自開啟本遊戲即可連線，不需掃碼）</span></div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <input id="roomIdInput" placeholder="輸入房間 ID，如 hb-a1b2c3" style="font-size:16px;padding:10px 14px;border-radius:10px;background:rgba(20,40,90,.5);border:1px solid rgba(110,190,255,.35);color:#fff;width:220px;outline:none">
+        <button class="btn blue" id="btnJoin" style="font-size:14px;padding:10px 20px">加入對戰</button>
+      </div>
+    </div>
+    <div id="netUrl" style="font-size:11px;color:#8fb6ef;word-break:break-all;max-width:440px;margin:10px auto 0"></div>
+    <div id="netStatus" style="margin-top:12px;color:#cfe1ff;font-size:14px;line-height:1.8">建立連線中…</div>
+    <div class="btnRow"><button class="btn ghost" id="btnNetCancel">取消返回</button></div>
+  </div>
+</div>
+
+<!-- 公布目標事件 -->
+<div id="scr-event" class="screen hidden">
+  <div class="panel eventCard">
+    <div class="labelPill" style="background:rgba(255,220,120,.15);color:#ffd97a;border:1px solid rgba(255,210,110,.5)">本局目標事件 A</div>
+    <div class="eventName" id="evName">—</div>
+    <div class="eventBg" id="evBg">—</div>
+    <div class="hint">⚠️ 題目僅公布事件名稱與背景，<b style="color:#ffd97a">標準答案的人物與地點不會顯示</b>。<br>
+      兩位玩家請依據背景線索：【事件經過欄】描述事件 A 的發生過程——時間、人物、經過、結果越詳細，速度戰力越高；【人物欄】【地點欄】則填寫目標事件 A 的代表人物與發生地點。</div>
+    <div class="btnRow"><button class="btn blue" id="btnToP1">一號玩家，請準備 ▸</button></div>
+  </div>
+</div>
+
+<!-- 玩家設定（選陀螺＋輸入） -->
+<div id="scr-setup" class="screen hidden">
+  <div class="panel">
+    <div style="text-align:center"><span class="labelPill" id="setupPill">一號玩家</span></div>
+    <div class="tagline" style="margin-top:10px">🎯 本局目標事件 A：<b id="setupTarget" style="color:#ffe9a8">—</b><br><span style="font-size:12px;color:#8fb6ef">「人物」與「地點」欄位必須針對「目標事件 A」作答，答非所問將被 AI 判定為低分。</span></div>
+    <div id="setupBg" style="margin-top:10px;font-size:13px;line-height:1.8;color:#d7e6ff;background:rgba(30,60,130,.18);border-left:3px solid #4aa3ff;border-radius:8px;padding:10px 14px;text-align:left"></div>
+    <div class="tagline" style="margin-top:12px">選擇你的 3D 戰鬥陀螺（外觀不影響戰力）：</div>
+    <div class="beyGrid" id="beyGrid"></div>
+    <div id="setupTimer" class="hidden" style="text-align:center;font-size:30px;font-weight:900;color:#ffe9a8;letter-spacing:2px;margin-top:12px;text-shadow:0 0 16px rgba(255,190,60,.5)">⏱ 60.0 秒</div>
+    <div id="readyStatus" style="text-align:center;margin-top:10px;font-size:14px;min-height:20px;letter-spacing:1px"></div>
+    <div class="fieldGrid">
+      <div class="field"><label>【事件經過欄】→ 陀螺 <span class="dim">速度 SPEED</span>（針對 A）</label><input id="inpEvent" placeholder="請描述目標事件 A 的發生經過，越詳細戰力越高"></div>
+      <div class="field"><label>【人物欄】→ 陀螺 <span class="dim">力量 POWER</span>（針對 A）</label><input id="inpPerson" placeholder="請填寫目標事件 A 的代表人物"></div>
+      <div class="field"><label>【地點欄】→ 陀螺 <span class="dim">平衡 BALANCE</span>（針對 A）</label><input id="inpPlace" placeholder="請填寫目標事件 A 的發生地點"></div>
+    </div>
+    <div class="hint">💡 「事件經過」依描述詳細度與關鍵事實覆蓋率給分（0–100）；「人物」「地點」與標準答案越相符越高分；事件與目標事件 A 高度相關（同時期／因果／相關戰役）可獲得 <b style="color:#ffd97a">總戰力 +5%</b> 加成。<br>🧿 每款陀螺擁有<b style="color:#ffd97a">獨特能力加成（總上限 10%）</b>——依你的答案強項挑選陀螺是致勝關鍵！<br>⚔️ 三維戰力真實反映於對戰物理：<b style="color:#9fdcff">速度→移動敏捷飄忽</b>、<b style="color:#ff9d9d">力量→火花更巨、震動與推擠更強</b>、<b style="color:#7dffb0">平衡→受擊迅速回穩、常駐盤面中央</b>。</div>
+    <div id="launcherWrap">
+      <div id="launcher">
+        <div class="lTag">RIP CORD LAUNCHER</div>
+        <div id="launchTrack">
+          <div id="launchFill"></div>
+          <div id="launchHandle"><div class="grip"></div><div class="grip"></div><div class="grip"></div></div>
+        </div>
+        <div id="launchHint">⬇ 下拉發射 ⬇</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 過場遮擋 -->
+<div id="scr-handoff" class="screen hidden">
+  <div class="panel coverPanel">
+    <div class="lockIcon">🙈</div>
+    <h2>請交給二號玩家</h2>
+    <p style="color:#9fc4ff;font-size:14px;line-height:1.8">一號玩家的答案已鎖定並保密。<br>請確認一號玩家已將裝置交給二號玩家。</p>
+    <div class="btnRow"><button class="btn blue" id="btnToP2">我是二號玩家，繼續 ▸</button></div>
+  </div>
+</div>
+
+<!-- 結局畫面 -->
+<div id="scr-result" class="screen hidden">
+  <div class="panel">
+    <div class="resultTitle" id="resTitle">—</div>
+    <div style="text-align:center;color:#9fc4ff;font-size:13px" id="resSub">—</div>
+    <div id="resTable"></div>
+    <div class="analysisBox" id="resComments" style="background:rgba(52,34,84,.32);border-color:rgba(190,140,255,.4)"></div>
+    <div class="analysisBox" id="resAnalysis"></div>
+    <div class="btnRow"><button class="btn" id="btnNext">🔄 下一場對戰</button></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   一、歷史事件資料庫（由上傳課本文本清洗、格式化、篩選）
+   ========================================================= */
+const EVENTS = [
+ {name:'鄭成功攻台',aliases:['鄭成功收復台灣','鄭成功攻取台灣','國姓爺攻台'],person:'鄭成功',personAliases:['國姓爺','鄭森','延平郡王'],place:'臺灣（熱蘭遮城）',placeAliases:['熱蘭遮城','安平','大員','台江內海','台灣'],era:'17世紀',bg:'1661 年鄭成功率軍由金門、廈門出發，經澎湖、鹿耳門進入台江內海，先取普羅民遮城，再圍攻熱蘭遮城；1662 年荷蘭人議和撤出，結束 38 年統治，建立臺灣第一個漢人政權。',analysis:'標準事件：鄭成功攻台（1661–1662）。代表人物：鄭成功（國姓爺，受封延平郡王）。發生地點：臺灣南部，核心是熱蘭遮城（今安平）。此戰終結荷蘭聯合東印度公司在台統治，開啟明鄭時期。',related:[1,2,3]},
+ {name:'荷蘭人統治台灣',aliases:['荷蘭統治時期','荷治時期','荷蘭東印度公司統治'],person:'荷蘭東印度公司（荷蘭人）',personAliases:['荷蘭人','VOC','聯合東印度公司','荷蘭長官'],place:'大員（今臺南安平）',placeAliases:['熱蘭遮城','大員','安平','台南'],era:'17世紀',bg:'1624 年荷蘭人轉往台灣南部，在大員建熱蘭遮城為行政中心，1642 年驅逐西班牙人統治全台；以台灣為國際貿易轉運站，輸出蔗糖、鹿皮，並對原住民採取武力鎮壓、間接統治與宗教教化，1652 年發生郭懷一事件。',analysis:'標準事件：荷蘭人統治台灣（1624–1662）。代表人物：荷蘭聯合東印度公司（VOC）及其長官。地點：大員（今臺南安平，熱蘭遮城）。',related:[0,2]},
+ {name:'鄭氏政權經營台灣',aliases:['明鄭時期','鄭氏政權','鄭經治理台灣'],person:'鄭經（陳永華）',personAliases:['鄭經','陳永華','鄭克塽'],place:'承天府（今臺南）',placeAliases:['臺南','承天府','台南孔廟'],era:'17世紀',bg:'鄭成功逝世後，其子鄭經在陳永華輔佐下持續抗清，實施軍屯「寓兵於農」開墾土地、穩定糧食，並設孔廟推行漢文教育，與日本、東南亞、英國發展貿易，將漢人典章制度移入台灣。',analysis:'標準事件：鄭氏政權在台經營（1662–1683）。代表人物：鄭經、陳永華。地點：承天府（今臺南）。',related:[0,1,3]},
+ {name:'清帝國將臺灣納入版圖',aliases:['施琅攻台','台灣納入清朝版圖','清領台灣'],person:'施琅',personAliases:['施琅','靖海將軍','康熙皇帝'],place:'臺灣、澎湖',placeAliases:['澎湖','台灣','鹿耳門'],era:'17世紀',bg:'1683 年清帝國派施琅率軍攻台，在澎湖海戰擊敗鄭氏，鄭克塽投降。清廷經「棄留爭議」後採納施琅主張，1684 年將台灣納入版圖，設臺灣府隸屬福建省。',analysis:'標準事件：清帝國統一台灣（1683–1684）。代表人物：施琅。地點：澎湖、臺灣。此後展開兩百多年清領時期。',related:[0,1,2]},
+ {name:'林爽文事件',aliases:['林爽文之亂'],person:'林爽文',personAliases:['林爽文','天地會'],place:'彰化大里杙',placeAliases:['大里杙','彰化','諸羅','臺灣府城'],era:'18世紀',bg:'1786 年官府清剿天地會，林爽文起事抗官，攻陷彰化縣城，蔓延全台西部；清廷利用閩粵、漳泉、客家間的族群矛盾分化鎮壓，歷時一年多平定，為清領時期規模最大的民變。',analysis:'標準事件：林爽文事件（1786–1788）。代表人物：林爽文（天地會首領）。地點：彰化大里杙（今台中大里）為起事中心。',related:[5,6]},
+ {name:'牡丹社事件',aliases:['日軍侵台','牡丹社之役'],person:'沈葆楨',personAliases:['沈葆楨','西鄉從道','琉球人'],place:'恆春半島（屏東）',placeAliases:['牡丹社','恆春','車城','石門','屏東'],era:'19世紀',bg:'1871 年琉球船隻漂流至恆春半島，船員遭誤會殺害。1874 年日本以「懲辦兇手」為由出兵台灣南部攻打牡丹社等部落。清廷派沈葆楨來台加強防務，事後承認日本出兵為「保民義舉」，日本不久併吞琉球。',analysis:'標準事件：牡丹社事件（1874）。代表人物：沈葆楨（清廷來台大臣）；日方由西鄉從道率軍。地點：台灣南部恆春半島牡丹社（屏東）。',related:[6,7,8]},
+ {name:'清法戰爭',aliases:['西仔反','中法戰爭'],person:'劉銘傳',personAliases:['劉銘傳','法軍','孤拔'],place:'基隆、淡水',placeAliases:['雞籠','滬尾','澎湖','基隆'],era:'19世紀',bg:'1884 年清、法因越南問題開戰，戰火延燒台灣：法軍攻陷基隆、進犯淡水遭重挫，並封鎖台灣、攻佔澎湖。劉銘傳來台督辦防務，戰後清廷意識到台灣戰略地位的重要性。',analysis:'標準事件：清法戰爭（1884–1885，台灣稱「西仔反」）。代表人物：劉銘傳。地點：基隆、淡水（滬尾）、澎湖。',related:[5,7]},
+ {name:'臺灣建省',aliases:['台灣建省','台灣升格為行省'],person:'劉銘傳',personAliases:['劉銘傳','台灣巡撫','劉銘傳'],place:'臺灣',placeAliases:['台灣','台北','臺北'],era:'19世紀',bg:'1885 年清法戰爭後，清廷將台灣升格為行省，任命劉銘傳為首任台灣巡撫。劉推動鐵路、電報、郵局、西式炮臺等現代化建設，使台灣成為清帝國最進步的省分之一。',analysis:'標準事件：台灣建省（1885）。代表人物：劉銘傳（首任台灣巡撫）。地點：臺灣。',related:[5,6,8]},
+ {name:'臺灣開港通商',aliases:['開港通商','台灣開港'],person:'陶德（李春生）',personAliases:['陶德','李春生','外國商人','買辦'],place:'淡水、安平',placeAliases:['滬尾','打狗','雞籠','大稻埕','安平','高雄'],era:'19世紀',bg:'1860 年代清帝國在英法聯軍之役戰敗後，開放雞籠、淡水、安平、打狗四港通商。洋行紛紛來台，茶葉、蔗糖、樟腦大量出口，帶動大稻埕等新興市鎮，台灣經濟長期出超、重心北移。',analysis:'標準事件：台灣開港通商（1860 年代起）。代表人物：英商陶德與買辦李春生（推動台茶外銷）。地點：淡水、安平、打狗、雞籠四口岸。',related:[5,7]},
+ {name:'長濱文化',aliases:['舊石器時代長濱文化'],person:'史前長濱人',personAliases:['長濱人','史前人類'],place:'臺東長濱（八仙洞）',placeAliases:['八仙洞','長濱鄉','台東'],era:'史前',bg:'1960 年代學者在台東長濱鄉八仙洞發現舊石器時代遺址，距今約五萬至五千年前，居民會用火、使用打製石器，以採集、狩獵、漁撈維生，是台灣目前發現最早的史前文化。',analysis:'標準事件：長濱文化（舊石器時代）。代表人物：史前長濱人。地點：臺東長濱八仙洞。',related:[]},
+ {name:'澶淵之盟',aliases:['宋遼澶淵之盟'],person:'宋真宗',personAliases:['宋真宗','遼聖宗','寇準'],place:'澶州（澶淵）',placeAliases:['澶淵','澶州','河南'],era:'11世紀',bg:'1004 年遼軍南下深入宋境，宰相寇準力主宋真宗親征至澶州。1005 年宋遼議和：劃定國界、宋每年給遼歲幣（銀十萬兩、絹二十萬匹），雙方君主以兄弟相稱，建立平等外交關係，維持百餘年和平。',analysis:'標準事件：澶淵之盟（1005）。代表人物：宋真宗（寇準促成親征）。地點：澶州（澶淵，今河南濮陽附近）。',related:[11]},
+ {name:'靖康之禍',aliases:['金滅北宋','靖康之變'],person:'金太宗（宋徽宗、宋欽宗）',personAliases:['金國','金太宗','宋徽宗','宋欽宗','女真人'],place:'汴京（開封）',placeAliases:['東京','汴梁','開封'],era:'12世紀',bg:'1125 年金國滅遼後繼續南下，1127 年攻陷北宋首都汴京，俘虜徽宗、欽宗二帝北去，北宋滅亡，史稱靖康之禍。殘餘皇室南遷臨安重建政權，是為南宋。',analysis:'標準事件：靖康之禍（1127）。代表人物：金太宗（被俘者為宋徽宗、宋欽宗）。地點：汴京（今河南開封）。',related:[10,12]},
+ {name:'蒙古西征',aliases:['成吉思汗西征','蒙古三次西征'],person:'成吉思汗',personAliases:['鐵木真','成吉思汗','蒙古人'],place:'中亞、歐亞草原',placeAliases:['花剌子模','中亞','蒙古高原'],era:'13世紀',bg:'13 世紀初鐵木真統一蒙古各部，被尊為成吉思汗。其與繼任者發動三次大規模西征，建立橫跨歐亞的龐大帝國並分封四大汗國，同時與南宋合作南下滅金，控制黃河流域。',analysis:'標準事件：蒙古西征（13 世紀）。代表人物：成吉思汗（鐵木真）。地點：由蒙古高原西進中亞、東歐。',related:[13]},
+ {name:'元朝統一中國',aliases:['忽必烈滅宋','元滅南宋'],person:'忽必烈',personAliases:['元世祖','忽必烈'],place:'大都（北京）',placeAliases:['元大都','北京','臨安'],era:'13世紀',bg:'1260 年代忽必烈採用皇帝稱號、定都大都、建國號「大元」。1279 年攻滅南宋，結束中國數個政權並存的局面。元朝實施四等族群差別政策，但廣設驛站，促成歐亞人員、物品、資訊流動的國際新秩序。',analysis:'標準事件：元朝統一（1271 建國、1279 滅宋）。代表人物：元世祖忽必烈。地點：大都（今北京）。',related:[12]},
+ {name:'鄭和下西洋',aliases:['三寶太監下西洋','鄭和航海'],person:'鄭和',personAliases:['三寶太監','鄭三寶','鄭和'],place:'西洋（東南亞、印度洋）',placeAliases:['劉家港','古里','忽魯謨斯','非洲東岸','南洋'],era:'15世紀',bg:'1405–1433 年明成祖派遣鄭和率龐大艦隊七下西洋，最遠抵達非洲東部，聘用穆斯林水手與東南沿海居民，展現國力並帶動朝貢貿易攀上巔峰，東南亞許多「三寶」地名即為紀念鄭和。',analysis:'標準事件：鄭和下西洋（1405–1433）。代表人物：鄭和（三寶太監）。地點：自劉家港出發，航向「西洋」（東南亞、印度洋至東非）。',related:[14]},
+ {name:'明清易代',aliases:['明朝滅亡','清軍入關','李自成攻陷北京'],person:'李自成',personAliases:['李自成','滿洲人','清軍','崇禎皇帝'],place:'北京',placeAliases:['紫禁城','順天府','山海關'],era:'17世紀',bg:'明末政治失序、財政匱乏，又逢天災饑荒，民變紛起。1644 年李自成率民變勢力攻陷北京，崇禎帝自縊，明朝滅亡；滿洲人趁勢入關建立清朝，陸續消滅反抗勢力並擊敗台灣鄭氏，確立統治。',analysis:'標準事件：明清易代（1644）。代表人物：李自成（民變首領）；滿洲人（清）入關。地點：北京。',related:[15]},
+ {name:'鴉片戰爭',aliases:['中英鴉片戰爭','第一次鴉片戰爭'],person:'林則徐',personAliases:['林則徐','道光皇帝','英國'],place:'廣州（南京）',placeAliases:['虎門','廣州','珠江','南京','江寧'],era:'19世紀',bg:'英國為解決對華貿易逆差，大量走私鴉片導致白銀外流。1839 年林則徐在廣州強制銷煙，1840 年英國出兵，中國戰敗。1842 年簽訂南京條約：割讓香港、賠款、五口通商，並取得領事裁判權、協定關稅等特權，揭開中國百年國恥。',analysis:'標準事件：鴉片戰爭（1840–1842）。代表人物：林則徐（欽差大臣，主持虎門銷煙）。地點：起於廣州，終於南京（簽約）。',related:[17]},
+ {name:'英法聯軍',aliases:['第二次鴉片戰爭','英法聯軍之役'],person:'咸豐帝（額爾金）',personAliases:['咸豐','英國','法國','額爾金'],place:'北京',placeAliases:['大沽','天津','圓明園','北京'],era:'19世紀',bg:'英國希望擴大通商遭拒，1857 年聯合法國出兵，攻陷大沽、進逼北京，圓明園遭劫掠焚毀。1858 年天津條約增開口岸、允許外人內地遊歷傳教，列強勢力深入中國內地，清廷隨後推動自強運動。',analysis:'標準事件：英法聯軍（1857–1860，第二次鴉片戰爭）。代表人物：咸豐帝（時任皇帝）；英法聯軍統帥額爾金。地點：大沽、天津、北京。',related:[16,18]},
+ {name:'自強運動',aliases:['洋務運動'],person:'李鴻章（曾國藩）',personAliases:['李鴻章','曾國藩','恭親王','左宗棠'],place:'中國（江南等地）',placeAliases:['江南製造總局','上海','安慶','天津','福州'],era:'19世紀',bg:'1861 年起曾國藩、李鴻章等官員見識西方船堅炮利，推動自強運動：設總理各國事務衙門、建兵工廠、修鐵路、派留學生。但建設多由地方各自推動、缺乏整體規劃，成效有限，甲午戰爭戰敗宣告其失敗。',analysis:'標準事件：自強運動（1861–1890 年代，又稱洋務運動）。代表人物：曾國藩、李鴻章。地點：以上海、安慶、天津、福州等地為中心。',related:[17,19]},
+ {name:'甲午戰爭',aliases:['中日甲午戰爭','甲午之役'],person:'光緒帝（丁汝昌）',personAliases:['光緒','丁汝昌','李鴻章','伊藤博文','日本'],place:'朝鮮、威海衛',placeAliases:['平壤','黃海','大東溝','威海衛','旅順','朝鮮半島'],era:'19世紀',bg:'1894 年日本藉朝鮮內亂出兵，與清爆發甲午戰爭，北洋艦隊全軍覆沒。1895 年馬關條約：賠款二億兩、承認朝鮮獨立、割讓台灣澎湖，並允許日商在口岸設廠，掀起列強瓜分中國的危機。',analysis:'標準事件：甲午戰爭（1894–1895）。代表人物：光緒帝（北洋水師提督丁汝昌）。地點：朝鮮半島、黃海、威海衛。',related:[18,20,22]},
+ {name:'戊戌變法',aliases:['百日維新','戊戌維新'],person:'康有為（梁啟超、光緒帝）',personAliases:['康有為','梁啟超','光緒皇帝','譚嗣同'],place:'北京',placeAliases:['紫禁城','京師','北京'],era:'19世紀',bg:'甲午戰敗後國危日亟，1898 年光緒帝採康有為、梁啟超建議推動制度層面改革：精簡機構、設京師大學堂、獎勵實業。因改革過急、觸動既得利益，慈禧發動戊戌政變囚禁光緒、廢止新政，歷時僅百餘日，史稱百日維新。',analysis:'標準事件：戊戌變法（1898）。代表人物：康有為、梁啟超（光緒帝支持）。地點：北京。',related:[19,21]},
+ {name:'八國聯軍',aliases:['庚子事變','義和團事件'],person:'義和團（慈禧太后）',personAliases:['義和團','慈禧','慈禧太后','八國聯軍'],place:'北京',placeAliases:['東交民巷','天津','北京'],era:'20世紀',bg:'1900 年義和團以「扶清滅洋」為號召攻擊教堂與使館，慈禧向列強宣戰。英、美、德、法、俄、日、義、奧八國聯軍攻陷北京，慈禧西逃，1901 年簽辛丑和約：鉅額賠款、懲辦禍首。清廷事後推動庚子後新政，1905 年廢除科舉。',analysis:'標準事件：八國聯軍（1900–1901，庚子事變）。代表人物：義和團（清廷實際決策者慈禧太后）。地點：北京（戰火亦及天津）。',related:[17,20]},
+ {name:'明治維新',aliases:['日本明治維新'],person:'明治天皇',personAliases:['明治','睦仁','明治天皇'],place:'日本（東京）',placeAliases:['江戶','東京','日本','橫濱'],era:'19世紀',bg:'1853 年黑船事件後日本被迫開港，1868 年明治天皇展開效法西方的全面改革：廢藩置縣、君主立憲、建新式軍隊、扶植工商、普及教育。國力大增後修約成功，並向外擴張：出兵台灣（牡丹社事件）、併吞琉球、侵略朝鮮。',analysis:'標準事件：明治維新（1868 起）。代表人物：明治天皇。地點：日本（首都由江戶遷往東京）。',related:[22,19]},
+ {name:'黑船事件',aliases:['培里來航','黑船來航'],person:'培里',personAliases:['培里','柏利','Perry','美國海軍'],place:'江戶灣（日本）',placeAliases:['浦賀','橫須賀','東京灣','日本'],era:'19世紀',bg:'1853 年美國海軍將領培里率黑色蒸汽軍艦駛入江戶灣，要求日本開國。1854 年簽訂日美和親條約開港通商，結束日本兩百多年鎖國。此事震撼日本朝野，成為明治維新的重要導火線。',analysis:'標準事件：黑船事件（1853）。代表人物：美國海軍將領培里（Matthew C. Perry）。地點：江戶灣（今東京灣，浦賀、橫須賀一帶）。',related:[23]},
+ {name:'漢摩拉比法典',aliases:['漢謨拉比法典'],person:'漢摩拉比',personAliases:['漢摩拉比','漢謨拉比','巴比倫王'],place:'巴比倫',placeAliases:['兩河流域','美索不達米亞','巴比倫城','伊拉克'],era:'西元前18世紀',bg:'西元前 18 世紀巴比倫國王漢摩拉比統一兩河流域，為強化統治下令編訂法典，刻於石柱頒行全國，內容涵蓋財產、傷害、婚姻等，奉行「以牙還牙」的報復原則，是現存較完整、系統性的上古成文法典。',analysis:'標準事件：漢摩拉比法典（西元前 18 世紀）。代表人物：巴比倫國王漢摩拉比。地點：兩河流域的巴比倫城。',related:[]},
+ {name:'新航路開闢',aliases:['地理大發現','大航海時代開始'],person:'哥倫布（達伽馬、麥哲倫）',personAliases:['哥倫布','達伽馬','麥哲倫','狄亞士','葡萄牙','西班牙'],place:'美洲（印度）',placeAliases:['好望角','美洲大陸','印度','大西洋','太平洋','馬尼拉','澳門'],era:'15-16世紀',bg:'15 世紀末起歐洲人尋找通往亞洲的新航路：1487 年狄亞士抵好望角、1492 年哥倫布抵美洲、1498 年達伽馬抵印度、1519–1522 年麥哲倫船隊環球一周。新航路串聯世界各大陸，歐洲各國隨後在美洲、亞洲建立殖民地，形塑近代世界。',analysis:'標準事件：新航路開闢（15 世紀末–16 世紀，地理大發現）。代表人物：哥倫布、達伽馬、麥哲倫、狄亞士。地點：大西洋—美洲—印度洋—太平洋航線。',related:[1,8]}
+];
+/* 每筆事件的課文出處章節（供賽後複習導引） */
+const SOURCES=[
+ '歷史（上）第2章 原住民族與荷、西、鄭氏的統治',
+ '歷史（上）第2章 原住民族與荷、西、鄭氏的統治',
+ '歷史（上）第2章 原住民族與荷、西、鄭氏的統治',
+ '歷史（上）第3章 清帝國的統治與開發',
+ '歷史（上）第3章 清帝國的統治與開發',
+ '歷史（上）第5章 日本統治時代的台灣',
+ '歷史（上）第4章 晚清變局下的台灣與現代化',
+ '歷史（上）第4章 晚清變局下的台灣與現代化',
+ '歷史（上）第4章 晚清變局下的台灣與現代化',
+ '歷史（上）第1章 史前台灣與原住民族',
+ '歷史（中）第2章 多元族群與夷夏觀念的形塑',
+ '歷史（中）第2章 多元族群與夷夏觀念的形塑',
+ '歷史（中）第3章 從蒙古帝國到元明的東亞秩序',
+ '歷史（中）第3章 從蒙古帝國到元明的東亞秩序',
+ '歷史（中）第4章 明清帝國與東亞世界的交會',
+ '歷史（中）第4章 明清帝國與東亞世界的交會',
+ '歷史（中）第5章 晚清變局下的社會與文化',
+ '歷史（中）第5章 晚清變局下的社會與文化',
+ '歷史（中）第5章 晚清變局下的社會與文化',
+ '歷史（中）第5章 晚清變局下的社會與文化',
+ '歷史（中）第5章 晚清變局下的社會與文化',
+ '歷史（中）第5章 晚清變局下的社會與文化',
+ '歷史（中）第6章 日本與朝鮮的現代化歷程',
+ '歷史（中）第6章 日本與朝鮮的現代化歷程',
+ '歷史（下）第1章 古文明的發展與交流',
+ '歷史（下）第3章 歐洲社會的蛻變與大航海時代'
+];
+EVENTS.forEach((e,i)=>e.source=SOURCES[i]);
+
+/* =========================================================
+   二、十種 3D 戰鬥陀螺圖鑑（外觀不影響戰力）
+   ========================================================= */
+const BEYS = [
+ {name:'東方赤龍', en:'Dragon Crest', c1:0xd21f2c, c2:0xffd24a, type:'assault', boost:{speed:0.10}},
+ {name:'藍金鳳凰', en:'Phoenix Wings', c1:0x1e56c8, c2:0xf5c542, type:'assault', boost:{balance:0.10}},
+ {name:'聖騎士盾', en:'Paladin Shield', c1:0x9aa7b8, c2:0x3ec6d8, type:'armor', boost:{power:0.10}},
+ {name:'深海獵鯊', en:'Ocean Shark', c1:0x0b3d6e, c2:0x3ec6d8, type:'swirl', boost:{power:0.08,balance:0.02}},
+ {name:'狂暴獅王', en:'Lion Force', c1:0xe8a51c, c2:0xb45a12, type:'assault', boost:{speed:0.05,power:0.05}},
+ {name:'雷霆閃電', en:'Thunder Bolt', c1:0x6a2bd2, c2:0xcfd6e6, type:'swirl', boost:{power:0.05,balance:0.05}},
+ {name:'蒸汽齒輪', en:'Steam Gear', c1:0x8a8f99, c2:0xe0b36a, type:'armor', boost:{speed:0.05,balance:0.05}},
+ {name:'星際行星', en:'Cosmo Sphere', c1:0x2a3fa0, c2:0x7fd4ff, type:'swirl', boost:{speed:0.03,power:0.03,balance:0.04}},
+ {name:'水晶尖刺', en:'Crystal Spike', c1:0x35e0d0, c2:0xbffff8, type:'armor', boost:{speed:0.07,balance:0.03}},
+ {name:'古代戰車', en:'Ancient Chariot', c1:0x7a5a2a, c2:0xc9a227, type:'assault', boost:{power:0.07,speed:0.03}}
+];
+/* 加成文字：如「速度+10%」「力量+5%、平衡+5%」 */
+function boostText(b){
+  if(!b||!b.boost) return '—';
+  const CN={speed:'速度',power:'力量',balance:'平衡'};
+  return Object.keys(b.boost).map(k=>CN[k]+'+'+Math.round(b.boost[k]*100)+'%').join('、');
+}
+
+/* =========================================================
+   三、遊戲狀態與工具
+   ========================================================= */
+const G = {
+  screen:'home', target:null, curPlayer:1, tied:false, winnerNum:1, loserNum:2,
+  p1:{bey:null, inputs:{event:'',person:'',place:''}, speed:0, power:0, balance:0, bonus:false, total:0, verdicts:null},
+  p2:{bey:null, inputs:{event:'',person:'',place:''}, speed:0, power:0, balance:0, bonus:false, total:0, verdicts:null}
+};
+const $ = id => document.getElementById(id);
+
+/* =========================================================
+   一之二、連線對戰模組（PeerJS WebRTC + QR Code 邀請）
+   ========================================================= */
+const NET = { mode:'local', isHost:false, peer:null, conn:null, peerId:null,
+  readyMe:false, readyPeer:false, myData:null, p1data:null, p2data:null,
+  timerIv:null, deadline:0, override:null };
+
+function resetPlayers(){
+  ['p1','p2'].forEach(k=>{ G[k]={bey:null,inputs:{event:'',person:'',place:''},speed:0,power:0,balance:0,bonus:false,total:0,verdicts:null}; });
+}
+/* 玩家二：開啟含 ?room= 的網址時自動連線 */
+function netInit(){
+  const room=new URLSearchParams(location.search).get('room');
+  if(!room) return;
+  if(typeof Peer==='undefined'){ toast('連線元件載入失敗，改為單機模式'); return; }
+  NET.mode='online'; NET.isHost=false;
+  showScreen('scr-net');
+  $('netTitle').textContent='加入對戰';
+  $('qrBox').style.display='none';
+  $('joinBox').classList.add('hidden');
+  $('netStatus').textContent='正在連線到房主…';
+  try{ NET.peer=new Peer(); }catch(e){ $('netStatus').textContent='連線初始化失敗'; NET.mode='local'; return; }
+  NET.peer.on('open',()=>{ NET.conn=NET.peer.connect(room,{reliable:true}); wireConn(); });
+  NET.peer.on('error',e=>{ $('netStatus').textContent='連線失敗：'+e.type+'（請確認房主仍在線，或改用單機模式）'; });
+}
+/* 玩家一（房主）：開房並產生 QR Code */
+function makeRoomId(){ return 'hb-'+Math.random().toString(36).slice(2,8); } // 短 ID 方便手動輸入
+let hostTries=0;
+function createHostPeer(){
+  const id=makeRoomId();
+  let p;
+  try{ p=new Peer(id); }catch(e){ NET.mode='local'; toast('連線初始化失敗'); return; }
+  NET.peer=p;
+  p.on('open',()=>{
+    NET.peerId=id;
+    $('hostIdBox').classList.remove('hidden');
+    $('copyRow').classList.remove('hidden');
+    $('hostId').textContent=id;
+    const canHost=(location.protocol==='http:'||location.protocol==='https:');
+    const url=canHost ? location.href.split('#')[0].split('?')[0]+'?room='+encodeURIComponent(id) : '';
+    if(url){
+      $('qrBox').style.display='flex';
+      $('qrBox').innerHTML='';
+      new QRCode($('qrBox'),{text:url, width:190, height:190, correctLevel:QRCode.CorrectLevel.M});
+      $('netUrl').textContent=url;
+      $('netStatus').innerHTML='玩家二請掃描 QR Code 加入<br>（或複製 ID／網址傳給對方）';
+    } else {
+      $('qrBox').style.display='none';
+      $('netUrl').textContent='';
+      $('netStatus').innerHTML='⚠️ 目前環境（本機檔案或內嵌預覽）無法產生可連線網址。<br>請玩家二開啟本遊戲，點「📡 加入對戰」並輸入上方房間 ID。<br><span style="font-size:12px;color:#8fb6ef">（若要 QR 掃描直達，請將本檔案部署到 HTTPS 網站後再開啟）</span>';
+    }
+  });
+  p.on('connection',c=>{
+    if(NET.conn){ c.close(); return; }
+    NET.conn=c; wireConn();
+    $('netStatus').textContent='✅ 玩家二已連線！即將公布題目…';
+    setTimeout(()=>{
+      G.target=EVENTS[Math.floor(Math.random()*EVENTS.length)];
+      $('evName').textContent='「'+G.target.name+'」';
+      $('evBg').textContent=G.target.bg;
+      $('btnToP1').textContent='公布題目・雙方同時作答 ▸';
+      showScreen('scr-event');
+    },900);
+  });
+  p.on('error',e=>{
+    if(e.type==='unavailable-id'&&hostTries<3){ hostTries++; try{p.destroy();}catch(_){ } createHostPeer(); }
+    else $('netStatus').textContent='連線錯誤：'+e.type;
+  });
+}
+function hostOnline(){
+  if(typeof Peer==='undefined'){ toast('連線元件載入失敗，請檢查網路後重試'); return; }
+  ac();
+  NET.mode='online'; NET.isHost=true; hostTries=0;
+  showScreen('scr-net');
+  $('netTitle').textContent='建立對戰房間';
+  $('joinBox').classList.add('hidden');
+  $('hostIdBox').classList.add('hidden');
+  $('copyRow').classList.add('hidden');
+  $('netStatus').textContent='正在建立房間…';
+  createHostPeer();
+}
+/* 玩家二手動加入：輸入房間 ID（兩端各自開啟遊戲即可連線） */
+function showJoinScreen(){
+  showScreen('scr-net');
+  $('netTitle').textContent='加入對戰';
+  $('qrBox').style.display='none';
+  $('hostIdBox').classList.add('hidden');
+  $('copyRow').classList.add('hidden');
+  $('netUrl').textContent='';
+  $('netStatus').textContent='請輸入房主公布的房間 ID';
+  $('joinBox').classList.remove('hidden');
+}
+function joinById(id){
+  id=(id||'').trim();
+  if(!id){ toast('請輸入房間 ID'); return; }
+  if(typeof Peer==='undefined'){ toast('連線元件載入失敗，請檢查網路'); return; }
+  NET.mode='online'; NET.isHost=false;
+  $('joinBox').classList.add('hidden');
+  $('netStatus').textContent='正在連線到房主…';
+  let p;
+  try{ p=new Peer(); }catch(e){ NET.mode='local'; $('netStatus').textContent='連線初始化失敗'; return; }
+  NET.peer=p;
+  p.on('open',()=>{ NET.conn=p.connect(id,{reliable:true}); wireConn(); });
+  p.on('error',e=>{ $('netStatus').textContent='連線失敗：'+e.type+'（請確認 ID 正確且房主仍在線）'; });
+}
+function wireConn(){
+  NET.conn.on('open',()=>{ if(!NET.isHost) $('netStatus').textContent='✅ 已連線！等待房主公布題目…'; });
+  NET.conn.on('data',onData);
+  NET.conn.on('close',()=>{ toast('⚠ 對方已離線'); });
+}
+function netCancel(){
+  try{ if(NET.conn) NET.conn.close(); if(NET.peer) NET.peer.destroy(); }catch(e){}
+  clearInterval(NET.timerIv);
+  NET.mode='local'; NET.conn=null; NET.peer=null;
+  $('setupTimer').classList.add('hidden');
+  $('joinBox').classList.add('hidden');
+  $('hostIdBox').classList.add('hidden');
+  $('copyRow').classList.add('hidden');
+  showScreen('scr-home');
+}
+/* 60 秒同步作答倒數：時間到強制發射 */
+function startTimer(until){
+  NET.deadline=until;
+  $('setupTimer').classList.remove('hidden');
+  clearInterval(NET.timerIv);
+  NET.timerIv=setInterval(()=>{
+    const left=NET.deadline-Date.now();
+    const el=$('setupTimer');
+    el.textContent='⏱ '+Math.max(0,left/1000).toFixed(1)+' 秒';
+    el.style.color=left<10000?'#ff9d9d':'#ffe9a8';
+    if(left<=0){ clearInterval(NET.timerIv); if(!NET.readyMe) onlineReady(true); }
+  },100);
+}
+/* 準備射擊：鎖定己方輸入並通知對方 */
+function onlineReady(auto){
+  if(NET.readyMe) return;
+  const p=G.curPlayer===1?G.p1:G.p2;
+  let bey=p.bey;
+  if(bey==null){ bey=Math.floor(Math.random()*BEYS.length); p.bey=bey; } // 未選則隨機，時間到強制發射
+  const inputs={event:$('inpEvent').value.trim(), person:$('inpPerson').value.trim(), place:$('inpPlace').value.trim()};
+  p.inputs=inputs;
+  NET.myData={bey:bey, inputs:inputs};
+  if(NET.isHost) NET.p1data=NET.myData; else NET.p2data=NET.myData;
+  NET.readyMe=true;
+  ['inpEvent','inpPerson','inpPlace'].forEach(id=>$(id).disabled=true);
+  lockLauncher();
+  $('readyStatus').innerHTML='<span style="color:#7dffb0">✔ 己方已準備射擊'+(auto?'（時間到強制發射）':'')+'</span> '+
+    (NET.readyPeer?'<span style="color:#9fdcff">✔ 對方準備射擊</span>':'<span style="color:#8fb6ef">等待對方…</span>');
+  try{ NET.conn.send({type:'ready', bey:bey, inputs:inputs}); }catch(e){}
+  checkBothReady();
+}
+/* 雙方就緒 → 房主統一發令，3 秒後同步開戰（平手亂數由房主決定避免兩端不同） */
+function checkBothReady(){
+  if(NET.mode!=='online'||!NET.isHost) return;
+  if(!(NET.readyMe&&NET.readyPeer&&NET.p1data&&NET.p2data)) return;
+  computeScores();
+  const override={winnerNum:G.winnerNum, tied:G.tied, tiebreak:G.tiebreak};
+  const msg={type:'battle', p1:NET.p1data, p2:NET.p2data, override:override};
+  try{ NET.conn.send(msg); }catch(e){}
+  onData(msg);
+}
+function onData(m){
+  if(m.type==='start'){
+    clearInterval(NET.timerIv);
+    G.target=EVENTS[m.targetIdx];
+    NET.readyMe=false; NET.readyPeer=false; NET.myData=null; NET.p1data=null; NET.p2data=null; NET.override=null;
+    resetPlayers();
+    $('btnNext').disabled=false; $('btnNext').textContent='🔄 下一場對戰';
+    toSetup(NET.isHost?1:2);
+    startTimer(Date.now()+m.dur); // 雙方各自以「收到題目瞬間」起算，誤差僅網路延遲
+  }
+  else if(m.type==='ready'){
+    NET.readyPeer=true;
+    const d={bey:m.bey, inputs:m.inputs};
+    if(NET.isHost) NET.p2data=d; else NET.p1data=d;
+    $('readyStatus').innerHTML='<span style="color:#9fdcff">✔ 對方準備射擊</span> '+
+      (NET.readyMe?'<span style="color:#7dffb0">✔ 己方已準備</span>':'<span style="color:#8fb6ef">己方尚未準備</span>');
+    checkBothReady();
+  }
+  else if(m.type==='battle'){
+    NET.p1data=m.p1; NET.p2data=m.p2; NET.override=m.override;
+    G.p1={bey:m.p1.bey, inputs:m.p1.inputs}; // 雙方答案在此交匯，兩端資料一致
+    G.p2={bey:m.p2.bey, inputs:m.p2.inputs};
+    clearInterval(NET.timerIv);
+    $('setupTimer').classList.add('hidden');
+    $('readyStatus').innerHTML='<span style="color:#ffe9a8">⚔️ 雙方就緒，對決開始！</span>';
+    setTimeout(()=>{ try{ startBattle(); }catch(err){ toast('⚠ 開戰錯誤：'+err.message); } }, 60);
+  }
+}
+function norm(s){ return (s||'').toString().trim().replace(/\s+/g,'').replace(/[，。,.!！?？、·]/g,'').toLowerCase(); }
+function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden')); if(id) $(id).classList.remove('hidden'); }
+function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2600); }
+
+/* 簡易音效 */
+let AC=null;
+function ac(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return AC; }
+function beep(f,d,type,vol){ try{ const c=ac(); if(!c)return; const o=c.createOscillator(),g=c.createGain();
+  o.type=type||'square'; o.frequency.value=f; g.gain.setValueAtTime(vol||0.12,c.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+(d||0.08)); o.connect(g); g.connect(c.destination);
+  o.start(); o.stop(c.currentTime+(d||0.08)); }catch(e){} }
+
+/* =========================================================
+   四、三維戰力計分（正確度 0–100）與相關度 +5%
+   ========================================================= */
+function matchScore(input, answers){
+  const inp = norm(input);
+  if(!inp) return {score:0, label:'未作答', cls:'v-bad'};
+  for(const a of answers){ if(norm(a)===inp) return {score:100, label:'完全正確', cls:'v-ok'}; }
+  for(const a of answers){ const n=norm(a); if(n.length>=2 && inp.includes(n)) return {score:85, label:'正確', cls:'v-ok'}; }
+  for(const a of answers){ const n=norm(a); if(n.length>=2 && n.includes(inp)) return {score:70, label:'大致正確', cls:'v-ok'}; }
+  let best=0;
+  for(const a of answers){
+    const n=norm(a); if(n.length<2) continue;
+    const grams=new Set(); for(let i=0;i<n.length-1;i++) grams.add(n.slice(i,i+2));
+    let hit=0; grams.forEach(g=>{ if(inp.includes(g)) hit++; });
+    best=Math.max(best, grams.size? hit/grams.size : 0);
+  }
+  if(best>=0.5) return {score:55, label:'部分相關', cls:'v-mid'};
+  if(best>0.15) return {score:35, label:'些微相關', cls:'v-mid'};
+  return {score:10, label:'不正確', cls:'v-bad'};
+}
+function extractKeywords(text){
+  const stop='的了在是與及或前後並為之其也後來因為所以以及之後之前其中年月日時人他他們方國又於對由到等著這那有個要我你祂祂們';
+  const s=norm(text); const kw=new Set();
+  for(let i=0;i<s.length-1;i++){
+    const g=s.slice(i,i+2);
+    if(/[0-9a-z]/.test(g)) continue;
+    if(stop.indexOf(g[0])>=0 || stop.indexOf(g[1])>=0) continue;
+    kw.add(g);
+  }
+  return [...kw];
+}
+function scoreProcess(input, target){
+  const inp=norm(input);
+  if(!inp) return {score:0, label:'未作答', cls:'v-bad'};
+  const kws=extractKeywords(target.bg);
+  let hit=0; kws.forEach(k=>{ if(inp.includes(k)) hit++; });
+  const cov=kws.length? hit/kws.length : 0;
+  const lenPts=Math.min(inp.length,60)/60*40;
+  const nameHit=[target.name].concat(target.aliases).some(a=>{ const n=norm(a); return n.length>=2 && inp.includes(n); });
+  const score=Math.round(Math.min(100, cov*70 + lenPts + (nameHit?15:0)));
+  let label, cls;
+  if(score>=85){ label='詳實完整'; cls='v-ok'; }
+  else if(score>=65){ label='相當詳細'; cls='v-ok'; }
+  else if(score>=45){ label='略有提及'; cls='v-mid'; }
+  else if(score>=20){ label='過於簡略'; cls='v-mid'; }
+  else { label='幾乎未描述'; cls='v-bad'; }
+  return {score, label, cls};
+}
+function relevanceBonus(player, target, evScore){
+  const inp = norm(player.inputs.event);
+  if(!inp) return false;
+  const hitAny = list => list.some(a=>{ const n=norm(a); return n && (inp===n || inp.includes(n) || (n.includes(inp)&&inp.length>=2)); });
+  if(hitAny([target.name].concat(target.aliases))) return true;
+  if(evScore>=65) return true; // 經過描述夠詳細且命中足夠關鍵事實 = 高度相關
+  for(const ri of target.related){ const ev=EVENTS[ri]; if(hitAny([ev.name].concat(ev.aliases))) return true; }
+  return false;
+}
+function computeScores(){
+  const t = G.target;
+  [G.p1,G.p2].forEach(p=>{
+    const peAns = [t.person].concat(t.personAliases||[]);
+    const plAns = [t.place].concat(t.placeAliases||[]);
+    const sEv = scoreProcess(p.inputs.event, t);
+    const sPe = matchScore(p.inputs.person, peAns);
+    const sPl = matchScore(p.inputs.place, plAns);
+    const bst=(p.bey!=null&&BEYS[p.bey])?BEYS[p.bey].boost:{};
+    p.speed=Math.min(100, Math.round(sEv.score*(1+(bst.speed||0))));
+    p.power=Math.min(100, Math.round(sPe.score*(1+(bst.power||0))));
+    p.balance=Math.min(100, Math.round(sPl.score*(1+(bst.balance||0))));
+    p.bonus = relevanceBonus(p, t, sEv.score);
+    p.base = p.speed+p.power+p.balance;
+    p.total = Math.round(p.base * (p.bonus?1.05:1) * 100)/100;
+    sEv.input=p.inputs.event; sPe.input=p.inputs.person; sPl.input=p.inputs.place;
+    p.verdicts = {event:sEv, person:sPe, place:sPl};
+  });
+  G.tiebreak=null; G.tied=false;
+  if(G.p1.total === G.p2.total){
+    if(G.p1.speed!==G.p2.speed){ G.tiebreak='speed'; G.winnerNum=G.p1.speed>G.p2.speed?1:2; }
+    else if(G.p1.power!==G.p2.power){ G.tiebreak='power'; G.winnerNum=G.p1.power>G.p2.power?1:2; }
+    else if(G.p1.balance!==G.p2.balance){ G.tiebreak='balance'; G.winnerNum=G.p1.balance>G.p2.balance?1:2; }
+    else { G.tied=true; G.tiebreak='random'; G.winnerNum=Math.random()<0.5?1:2; }
+  } else { G.winnerNum = G.p1.total>G.p2.total?1:2; }
+  G.loserNum = G.winnerNum===1?2:1;
+}
+
+/* =========================================================
+   五、Three.js 場景、競技場與陀螺建模
+   ========================================================= */
+let scene, camera, renderer, clock;
+let arenaGroup, displayTops=[], glowRing=null, debris=[], sparks=[], flashLight=null;
+const FLOOR_Y = 0;
+
+function mat(color, metal, rough, extra){ return new THREE.MeshStandardMaterial(Object.assign({color, metalness:metal==null?0.85:metal, roughness:rough==null?0.3:rough}, extra||{})); }
+
+function initThree(){
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x05070f);
+  scene.fog = new THREE.Fog(0x05070f, 22, 55);
+  camera = new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.1, 200);
+  camera.position.set(0, 9.5, 13.5);
+  camera.lookAt(0, 0.8, 0);
+  renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  $('stage').appendChild(renderer.domElement);
+  clock = new THREE.Clock();
+
+  scene.add(new THREE.HemisphereLight(0xa8c8ff, 0x141824, 1.0));
+  const dir = new THREE.DirectionalLight(0xffffff, 1.7); dir.position.set(6,12,7); scene.add(dir);
+  const rim = new THREE.DirectionalLight(0x7fb0ff, 0.9); rim.position.set(-7,6,-9); scene.add(rim);
+  const p1 = new THREE.PointLight(0x3fa9ff, 60, 40); p1.position.set(-8,7,-4); scene.add(p1);
+  const p2 = new THREE.PointLight(0xff9d3f, 50, 40); p2.position.set(8,6,5); scene.add(p2);
+  flashLight = new THREE.PointLight(0xffe0a0, 0, 18); flashLight.position.set(0,3,0); scene.add(flashLight);
+
+  buildArena();
+  buildStars();
+  resetDisplayTops();
+  addEventListener('resize', ()=>{
+    camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+  animate();
+}
+
+function buildArena(){
+  arenaGroup = new THREE.Group(); scene.add(arenaGroup);
+  // 盤面地板
+  const floor = new THREE.Mesh(new THREE.CylinderGeometry(6.6,6.6,0.5,64),
+    new THREE.MeshStandardMaterial({color:0x0d1830, metalness:0.7, roughness:0.35}));
+  floor.position.y=-0.25; arenaGroup.add(floor);
+  // 盤面同心環
+  [[2.2,0x2a6fd5],[4.2,0x1c4a9e],[6.0,0x3fa9ff]].forEach(([r,c],i)=>{
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r,0.045,10,80),
+      new THREE.MeshStandardMaterial({color:c, emissive:c, emissiveIntensity:0.55, metalness:0.6, roughness:0.4}));
+    ring.rotation.x=Math.PI/2; ring.position.y=0.02; arenaGroup.add(ring);
+  });
+  // 中央徽章
+  const emblem = new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.9,0.06,32),
+    new THREE.MeshStandardMaterial({color:0xffb63d, emissive:0xff8c1a, emissiveIntensity:0.5, metalness:0.9, roughness:0.25}));
+  emblem.position.y=0.03; arenaGroup.add(emblem);
+  // 外牆（開放式圓筒）
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(6.6,6.6,1.7,64,1,true),
+    new THREE.MeshStandardMaterial({color:0x16264d, metalness:0.85, roughness:0.3, side:THREE.DoubleSide, transparent:true, opacity:0.85}));
+  wall.position.y=0.85; arenaGroup.add(wall);
+  const wallTop = new THREE.Mesh(new THREE.TorusGeometry(6.6,0.09,10,80),
+    new THREE.MeshStandardMaterial({color:0x3fa9ff, emissive:0x2a7fd0, emissiveIntensity:0.8, metalness:0.7, roughness:0.3}));
+  wallTop.rotation.x=Math.PI/2; wallTop.position.y=1.72; arenaGroup.add(wallTop);
+  // 底座
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(7.6,8.2,1.4,64),
+    new THREE.MeshStandardMaterial({color:0x0a1226, metalness:0.8, roughness:0.5}));
+  base.position.y=-1.4; arenaGroup.add(base);
+}
+function buildStars(){
+  const n=500, pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    const r=38+Math.random()*25, th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
+    pos[i*3]=r*Math.sin(ph)*Math.cos(th); pos[i*3+1]=Math.abs(r*Math.cos(ph))*0.6+2; pos[i*3+2]=r*Math.sin(ph)*Math.sin(th);
+  }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({color:0x6fa8ff, size:0.14, transparent:true, opacity:0.8})));
+}
+
+/* ---- 陀螺建模：依上傳實物照片三種原型（突擊型/鎧甲型/持久型），配色各自獨立 ---- */
+function hex(c){ return '#'+c.toString(16).padStart(6,'0'); }
+
+/* 臉部徽章貼紙：Canvas 動態彩繪（真實陀螺的 Face Bolt 貼紙） */
+function makeEmblemTexture(bey){
+  const cv=document.createElement('canvas'); cv.width=cv.height=256;
+  const x=cv.getContext('2d');
+  const g=x.createRadialGradient(110,100,20,128,128,128);
+  g.addColorStop(0,hex(bey.c2)); g.addColorStop(1,hex(bey.c1));
+  x.fillStyle=g; x.beginPath(); x.arc(128,128,128,0,7); x.fill();
+  x.strokeStyle='rgba(255,255,255,0.9)'; x.lineWidth=10;
+  x.beginPath(); x.arc(128,128,106,0,7); x.stroke();
+  x.strokeStyle='rgba(0,0,0,0.4)'; x.lineWidth=5;
+  x.beginPath(); x.arc(128,128,88,0,7); x.stroke();
+  x.fillStyle='#ffffff'; x.font='900 128px "Noto Sans TC",sans-serif';
+  x.textAlign='center'; x.textBaseline='middle';
+  x.shadowColor='rgba(0,0,0,.55)'; x.shadowBlur=14;
+  x.fillText(bey.name.charAt(0),128,138);
+  const tex=new THREE.CanvasTexture(cv);
+  tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=4;
+  return tex;
+}
+
+function buildBey(bey){
+  const g=new THREE.Group();
+  const parts=[];
+  const mMetal =new THREE.MeshStandardMaterial({color:0xc9ced8, metalness:1.0, roughness:0.24});
+  const mGold  =mat(bey.c2,0.95,0.2);
+  const mDark  =new THREE.MeshStandardMaterial({color:0x1c1f26, metalness:0.4, roughness:0.85});
+  const mRubber=new THREE.MeshStandardMaterial({color:0x121419, metalness:0.05, roughness:0.95});
+  const mBody  =new THREE.MeshStandardMaterial({color:bey.c1, metalness:0.35, roughness:0.4});
+  const mGloss =new THREE.MeshStandardMaterial({color:bey.c1, metalness:0.75, roughness:0.16});
+  const mClear =new THREE.MeshPhysicalMaterial({color:bey.c2, metalness:0.1, roughness:0.1,
+    transparent:true, opacity:0.6, depthWrite:false, clearcoat:0.8, clearcoatRoughness:0.2, side:THREE.DoubleSide});
+  const add=mesh=>{ g.add(mesh); parts.push(mesh); return mesh; };
+
+  /* 共通底層：橡膠軸尖＋塑膠頸＋金屬鍛造盤（對應實物 Driver + Forge Disc） */
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(0.15,0.3,20), mRubber);
+  tip.rotation.x=Math.PI; tip.position.y=0.15; add(tip);
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.2,0.2,20), mDark);
+  neck.position.y=0.38; add(neck);
+  const disc=new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.64,0.14,40), mMetal);
+  disc.position.y=0.53; add(disc);
+
+  const emblemTex=makeEmblemTexture(bey);
+  const mkFace=(r,y)=>{
+    const side=new THREE.MeshStandardMaterial({color:0xd8dce4, metalness:0.9, roughness:0.3});
+    const top=new THREE.MeshStandardMaterial({map:emblemTex, metalness:0.2, roughness:0.5});
+    const f=new THREE.Mesh(new THREE.CylinderGeometry(r,r*1.08,0.06,28), [side,top,side]);
+    f.position.y=y; add(f);
+  };
+
+  if(bey.type==='assault'){
+    /* 原型 A（照片 3）：上層主色甲盤＋撞色掃掠大刃＋淺色環＋中央徽章貼紙 */
+    const skirt=new THREE.Mesh(new THREE.CylinderGeometry(0.92,0.8,0.16,32), mBody);
+    skirt.position.y=0.66; add(skirt);
+    const deck=new THREE.Mesh(new THREE.CylinderGeometry(0.88,0.92,0.2,32), mBody);
+    deck.position.y=0.83; add(deck);
+    const ringW=new THREE.Mesh(new THREE.TorusGeometry(0.6,0.07,10,40),
+      new THREE.MeshStandardMaterial({color:0xeef1f5, metalness:0.3, roughness:0.4}));
+    ringW.rotation.x=Math.PI/2; ringW.position.y=0.95; add(ringW);
+    const nb=3;
+    for(let i=0;i<nb;i++){ const a=i/nb*Math.PI*2;
+      const b=new THREE.Mesh(new THREE.BoxGeometry(1.15,0.1,0.36), mGold);
+      b.position.set(Math.cos(a)*0.4,0.99,Math.sin(a)*0.4);
+      b.rotation.y=-a+0.55; b.rotation.z=0.1; add(b);
+      const d=new THREE.Mesh(new THREE.SphereGeometry(0.055,10,8), mGold);
+      d.position.set(Math.cos(a+Math.PI/nb)*0.76,0.96,Math.sin(a+Math.PI/nb)*0.76); add(d); }
+    mkFace(0.32,1.03);
+  }
+  else if(bey.type==='armor'){
+    /* 原型 B（照片 4）：六片金屬鎧甲環繞＋透明色核心＋黑底銀環徽章 */
+    const coreC=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.56,0.26,32), mClear);
+    coreC.position.y=0.72; add(coreC);
+    const plates=6;
+    for(let i=0;i<plates;i++){
+      const p=new THREE.Mesh(new THREE.CylinderGeometry(0.95,0.9,0.32,4,1,false,
+        i/plates*Math.PI*2+0.12, Math.PI*2/plates-0.24), mGloss);
+      p.position.y=0.62; add(p); }
+    const black=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.38,0.08,24),
+      new THREE.MeshStandardMaterial({color:0x0b0d12, metalness:0.6, roughness:0.4}));
+    black.position.y=0.88; add(black);
+    const ringS=new THREE.Mesh(new THREE.TorusGeometry(0.35,0.035,8,32), mMetal);
+    ringS.rotation.x=Math.PI/2; ringS.position.y=0.93; add(ringS);
+    mkFace(0.28,0.95);
+    for(let i=0;i<3;i++){ const a=i/3*Math.PI*2+0.5;
+      const claw=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.08,0.16), mGloss);
+      claw.position.set(Math.cos(a)*0.52,0.98,Math.sin(a)*0.52);
+      claw.rotation.y=-a; claw.rotation.z=0.25; add(claw); }
+  }
+  else{
+    /* 原型 C（照片 5）：渦旋圓頂＋金色內環＋半透明裙擺＋金珠點綴 */
+    const skirt=new THREE.Mesh(new THREE.CylinderGeometry(0.78,0.62,0.2,32,1,true), mClear);
+    skirt.position.y=0.56; add(skirt);
+    const gRing=new THREE.Mesh(new THREE.TorusGeometry(0.6,0.08,12,40), mGold);
+    gRing.rotation.x=Math.PI/2; gRing.position.y=0.68; add(gRing);
+    const dome=new THREE.Mesh(new THREE.SphereGeometry(0.72,32,18,0,Math.PI*2,0,Math.PI/2), mGloss);
+    dome.scale.y=0.66; dome.position.y=0.6; add(dome);
+    const ns=5+(bey.name.length%3); // 5–7 片渦旋刃，各款不同
+    for(let i=0;i<ns;i++){ const a=i/ns*Math.PI*2;
+      const w=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.09,0.26), mGloss);
+      w.position.set(Math.cos(a)*0.42,0.98,Math.sin(a)*0.42);
+      w.rotation.y=-a+0.7; w.rotation.z=0.34; add(w); }
+    for(let i=0;i<3;i++){ const a=i/3*Math.PI*2;
+      const o=new THREE.Mesh(new THREE.SphereGeometry(0.06,10,8), mGold);
+      o.position.set(Math.cos(a)*0.3,1.06,Math.sin(a)*0.3); add(o); }
+    mkFace(0.24,1.11);
+  }
+  /* ⑥ 專屬特徵件：每款獨一無二的外觀標誌，提升辨識度 */
+  switch(bey.name){
+    case '東方赤龍': // 金色雙龍角
+      for(const sgn of [1,-1]){ const horn=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.34,8), mGold);
+        horn.position.set(sgn*0.2,1.24,0); horn.rotation.z=sgn*-0.35; add(horn); }
+      break;
+    case '藍金鳳凰': // 三羽鳳冠
+      for(let i=0;i<3;i++){ const a=i/3*Math.PI*2; const cr=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.32,6), mGold);
+        cr.position.set(Math.cos(a)*0.16,1.22,Math.sin(a)*0.16);
+        cr.rotation.x=Math.sin(a)*0.55; cr.rotation.z=-Math.cos(a)*0.55; add(cr); }
+      break;
+    case '聖騎士盾': // 十字徽＋盾緣刺
+      { const cb1=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.05,0.09), mGold); cb1.position.set(0,1.17,0); add(cb1);
+        const cb2=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.05,0.3), mGold); cb2.position.set(0,1.17,0); add(cb2);
+        for(let i=0;i<6;i++){ const a=i/6*Math.PI*2; const sp=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.22,4), mMetal);
+          sp.position.set(Math.cos(a)*0.98,0.86,Math.sin(a)*0.98); sp.rotation.z=-Math.PI/2; sp.rotation.y=-a; add(sp); } }
+      break;
+    case '深海獵鯊': // 背鰭
+      { const fin=new THREE.Mesh(new THREE.ConeGeometry(0.13,0.42,4), mBody);
+        fin.scale.z=0.32; fin.position.set(0,1.3,0); add(fin); }
+      break;
+    case '狂暴獅王': // 鬃毛珠環
+      for(let i=0;i<10;i++){ const a=i/10*Math.PI*2; const s=new THREE.Mesh(new THREE.SphereGeometry(0.075,10,8), mGold);
+        s.position.set(Math.cos(a)*0.52,1.04,Math.sin(a)*0.52); add(s); }
+      break;
+    case '雷霆閃電': // 雙折雷角
+      for(let k=0;k<2;k++){ const b=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.06,0.12), mGold);
+        b.position.set(k?0.12:-0.1,1.18+k*0.09,0); b.rotation.y=k?0.9:-0.9; add(b); }
+      break;
+    case '蒸汽齒輪': // 頂冠小齒輪
+      for(let i=0;i<8;i++){ const a=i/8*Math.PI*2; const t=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.09,0.07), mGold);
+        t.position.set(Math.cos(a)*0.26,1.2,Math.sin(a)*0.26); t.rotation.y=-a; add(t); }
+      break;
+    case '星際行星': // 雙軌道環
+      { const or1=new THREE.Mesh(new THREE.TorusGeometry(0.92,0.03,8,52), mGold);
+        or1.rotation.x=Math.PI/2.3; or1.position.y=0.7; add(or1);
+        const or2=new THREE.Mesh(new THREE.TorusGeometry(0.92,0.03,8,52), mGold);
+        or2.rotation.x=Math.PI/1.7; or2.rotation.y=1.1; or2.position.y=0.7; add(or2); }
+      break;
+    case '水晶尖刺': // 頂部水晶簇
+      for(let i=0;i<5;i++){ const a=i/5*Math.PI*2; const c=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.3,5),
+        new THREE.MeshPhysicalMaterial({color:bey.c1, emissive:bey.c1, emissiveIntensity:0.4, metalness:0.05, roughness:0.05, transparent:true, opacity:0.85, depthWrite:false}));
+        c.position.set(Math.cos(a)*0.3,1.2,Math.sin(a)*0.3); c.rotation.z=-Math.PI/5; c.rotation.y=-a; add(c); }
+      break;
+    case '古代戰車': // 雙側戰矛
+      for(const sgn of [1,-1]){ const sp=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.5,6), mGold);
+        sp.position.set(sgn*1.02,0.78,0); sp.rotation.z=sgn*-Math.PI/2; add(sp); }
+      break;
+  }
+  g.userData.parts = parts;
+  g.userData.spin = 0;
+  g.userData.spinSpeed = 0;
+  g.userData.wobble = 0;
+  return g;
+}
+
+function resetDisplayTops(){
+  displayTops.forEach(t=>scene.remove(t)); displayTops=[];
+  const a=buildBey(BEYS[0]), b=buildBey(BEYS[7]);
+  a.position.set(-2.8,0,0.6); b.position.set(2.8,0,-0.6);
+  a.scale.setScalar(0.575); b.scale.setScalar(0.575);
+  a.userData.spinSpeed=4; b.userData.spinSpeed=-4;
+  scene.add(a,b); displayTops=[a,b];
+}
+
+/* ---- 火花粒子 ---- */
+function spawnSparks(pos, count, color, size){
+  const n=count||60;
+  const posArr=new Float32Array(n*3), vel=[];
+  for(let i=0;i<n;i++){
+    posArr[i*3]=pos.x; posArr[i*3+1]=pos.y+1; posArr[i*3+2]=pos.z;
+    const a=Math.random()*Math.PI*2, up=Math.random()*4+1, sp=Math.random()*5+2;
+    vel.push(new THREE.Vector3(Math.cos(a)*sp, up, Math.sin(a)*sp));
+  }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(posArr,3));
+  const p=new THREE.Points(g, new THREE.PointsMaterial({color:color||0xffc14d, size:size||0.14, transparent:true, opacity:1, blending:THREE.AdditiveBlending, depthWrite:false}));
+  scene.add(p);
+  sparks.push({points:p, vel:vel, life:0.55, max:0.55});
+}
+
+/* =========================================================
+   六、極速對戰系統（總長 < 10 秒）
+   ========================================================= */
+const BT = { active:false, t:0, hits:[], hitIdx:0, exploded:false, done:false,
+             topW:null, topL:null, keysW:null, keysL:null, ratio:1,
+             winnerHP:[], loserHP:[], nHits:5, shake:0, explodeT:6.2, endT:8.8 };
+
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function smooth(a,b,t){ const k=clamp((t-a)/(b-a||1),0,1); return k*k*(3-2*k); }
+function samplePos(keys,t){
+  if(t<=keys[0].t) return keys[0].pos;
+  for(let i=0;i<keys.length-1;i++){
+    const a=keys[i], b=keys[i+1];
+    if(t>=a.t && t<=b.t){ return a.pos.clone().lerp(b.pos, smooth(a.t,b.t,t)); }
+  }
+  return keys[keys.length-1].pos;
+}
+
+function planBattle(){
+  const winner = G.winnerNum===1?G.p1:G.p2, loser = G.loserNum===1?G.p1:G.p2;
+  BT.ratio = Math.max(1, winner.total/Math.max(1,loser.total));
+  const avgSpd=(BT.statW.spd+BT.statL.spd)/2;
+  BT.nHits = 4+Math.min(2, Math.floor(avgSpd/45)); // 4–6 次：雙方速度越高交鋒越密集
+  const start=2.0, end=6.9; // 整體節奏減緩約30%，提升觀賞性
+  BT.hits=[];
+  for(let i=0;i<BT.nHits;i++){
+    const t = BT.nHits===1? start : start+(end-start)*(i/(BT.nHits-1));
+    const pt=new THREE.Vector3((Math.random()*2-1)*2.2, 0, (Math.random()*2-1)*2.2);
+    BT.hits.push({t:t, point:pt});
+  }
+  BT.explodeT = end+0.5;   // 7.4
+  BT.endT = BT.explodeT+2.3; // 9.7 秒完結（仍 <10 秒）
+  // 血量曲線：敗方在最後一擊歸零
+  BT.winnerHP=[]; BT.loserHP=[];
+  for(let i=0;i<BT.nHits;i++){
+    BT.loserHP.push(Math.max(0, Math.round(100*(1-(i+1)/BT.nHits))));
+    const powRatio=(BT.statW.pow+20)/(BT.statL.pow+20);
+    const wDmg = clamp(11*powRatio/Math.sqrt(BT.ratio), 1, 16); // 力量差距越大越懸殊
+    BT.winnerHP.push(Math.max(20, Math.round(100 - wDmg*(i+1))));
+  }
+}
+function genKeys(side, isWinner, stat, oppPow){
+  const keys=[];
+  const appT = 0.16 - stat.spd/100*0.06;   // 速度高：突進窗口更短（更敏捷）
+  const knock = 1.0 + oppPow/100*2.6;      // 對手力量高：被撞退更遠
+  const pull = stat.bal/100*0.55;          // 平衡高：彈開後向中央收斂
+  keys.push({t:0, pos:new THREE.Vector3(side*4.6, 8.5, 0)});
+  keys.push({t:1.9, pos:new THREE.Vector3(side*3.9, 0, side*0.5)});
+  let cur=keys[1].pos.clone();
+  BT.hits.forEach(h=>{
+    keys.push({t:h.t-appT, pos:cur.clone()});
+    keys.push({t:h.t, pos:h.point.clone()});
+    const out=h.point.clone().add(new THREE.Vector3((Math.random()*2-1)*3.1*knock, 0, (Math.random()*2-1)*3.1*knock));
+    out.lerp(new THREE.Vector3(0,0,0), pull);
+    out.x=clamp(out.x,-5.8,5.8); out.z=clamp(out.z,-5.8,5.8);
+    keys.push({t:h.t+0.55, pos:out});
+    cur=out.clone();
+  });
+  if(isWinner){
+    keys.push({t:BT.explodeT+0.2, pos:cur.clone()});
+    keys.push({t:BT.explodeT+1.1, pos:new THREE.Vector3(0,0,0)});
+    keys.push({t:BT.endT+1, pos:new THREE.Vector3(0,0,0)});
+  } else {
+    keys.push({t:BT.explodeT, pos:cur.clone()});
+  }
+  return keys;
+}
+
+function startBattle(){
+  showScreen(null); // 隱藏玩家輸入介面，露出 3D 對戰場景
+  computeScores();
+  if(NET.override){ G.winnerNum=NET.override.winnerNum; G.tied=NET.override.tied; G.tiebreak=NET.override.tiebreak; G.loserNum=G.winnerNum===1?2:1; NET.override=null; }
+  if(!BEYS[G.p1.bey]) G.p1.bey=0;
+  if(!BEYS[G.p2.bey]) G.p2.bey=0;
+  const wp=G.winnerNum===1?G.p1:G.p2, lp=G.loserNum===1?G.p1:G.p2;
+  BT.statW={spd:wp.speed, pow:wp.power, bal:wp.balance};
+  BT.statL={spd:lp.speed, pow:lp.power, bal:lp.balance};
+  planBattle();
+  displayTops.forEach(t=>scene.remove(t)); displayTops=[];
+  clearBattleObjects();
+  BT.topW=buildBey(BEYS[(G.winnerNum===1?G.p1:G.p2).bey]);
+  BT.topL=buildBey(BEYS[(G.loserNum===1?G.p1:G.p2).bey]);
+  BT.topW.scale.setScalar(0.575); BT.topL.scale.setScalar(0.575);
+  scene.add(BT.topW, BT.topL);
+  const wSide = G.winnerNum===1?-1:1;
+  BT.keysW = genKeys(wSide, true, BT.statW, BT.statL.pow);
+  BT.keysL = genKeys(-wSide, false, BT.statL, BT.statW.pow);
+  BT.t=0; BT.hitIdx=0; BT.exploded=false; BT.done=false; BT.shake=0;
+  $('hpName1').textContent = '一號玩家｜'+BEYS[G.p1.bey].name;
+  $('hpName2').textContent = '二號玩家｜'+BEYS[G.p2.bey].name;
+  /* 血量條已移除，改以零件掉落程度示意傷害 */
+  startCountdown(()=>{ BT.active=true; beep(520,0.15,'sawtooth',0.2); });
+}
+
+function startCountdown(cb){
+  const ov=$('countOverlay'), num=$('countNum');
+  ov.classList.remove('hidden');
+  const seq=['3','2','1','發射！']; let i=0;
+  (function step(){
+    num.textContent=seq[i]; num.style.transform='scale(1.25)'; num.style.opacity='1';
+    num.style.transition='none'; requestAnimationFrame(()=>{ num.style.transition='all .5s'; num.style.transform='scale(1)'; });
+    beep(300+i*120, 0.1,'square',0.15);
+    i++;
+    if(i<seq.length) setTimeout(step, 700);
+    else setTimeout(()=>{ ov.classList.add('hidden'); cb(); }, 650);
+  })();
+}
+
+function battleUpdate(dt){
+  BT.t += dt;
+  const t = BT.t;
+  // 位置關鍵幀
+  const pw = samplePos(BT.keysW, t), pl = samplePos(BT.keysL, t);
+  BT.topW.position.copy(pw);
+  if(!BT.exploded) BT.topL.position.copy(pl);
+  // 旋轉與晃動
+  [BT.topW, BT.topL].forEach((tp,i)=>{
+    if(!tp) return;
+    const stat = i===0? BT.statW : BT.statL;
+    // 速度→飄忽軌跡：高速度陀螺在盤面上做高頻蛇行位移
+    if(t>1.5 && !(BT.exploded&&i===1)){
+      const amp = stat.spd/100*1.95*(BT.exploded?0.15:1);
+      if(amp>0.03){
+        const f = (3.5+stat.spd/12)*0.7; // 蛇行頻率減緩
+        tp.position.x = clamp(tp.position.x + Math.sin(t*f+i*2.1)*amp, -5.8, 5.8);
+        tp.position.z = clamp(tp.position.z + Math.cos(t*f*0.83+i*1.3)*amp, -5.8, 5.8);
+      }
+    }
+    const base = (18 + stat.spd*0.14 + (i===0? BT.ratio*3 : 0))*0.72; // 自轉減緩
+    tp.userData.spin += base*dt*(1+ (t<1.9? (1.9-t):0)*0.4);
+    tp.rotation.y = tp.userData.spin;
+    // 平衡→回穩速度：高平衡晃動衰減更快
+    const rec = 2 + stat.bal/9;
+    tp.userData.wobble *= Math.exp(-rec*dt);
+    tp.rotation.x = Math.sin(t*38)*0.09*tp.userData.wobble;
+    tp.rotation.z = Math.cos(t*33)*0.09*tp.userData.wobble;
+    if(t<1.9){ const s=0.575*(0.55+0.45*smooth(0,1.9,t)); tp.scale.setScalar(s); }
+    else tp.scale.setScalar(0.575);
+  });
+  // 撞擊判定
+  while(BT.hitIdx<BT.hits.length && t>=BT.hits[BT.hitIdx].t){
+    const h=BT.hits[BT.hitIdx];
+    // 力量→特效規模：雙方力量均值決定火花大小、閃光與震動
+    const avgPow=(BT.statW.pow+BT.statL.pow)/2;
+    BT.topW.userData.wobble=1.0+(1-BT.statW.bal/100)*1.8;
+    BT.topL.userData.wobble=1.2+(1-BT.statL.bal/100)*2.0;
+    const ip=h.point.clone(); ip.y=0.6;
+    spawnSparks(ip, Math.round(40+avgPow*0.8), 0xffc14d, 0.09+avgPow/450);
+    flashLight.position.copy(ip); flashLight.intensity=80+avgPow*1.8;
+    BT.shake=0.12+avgPow/100*0.5;
+    beep(140+Math.random()*60, 0.12,'sawtooth',0.3); beep(900,0.05,'square',0.12);
+    shedParts(BT.topL, BT.hitIdx===0?1:(Math.random()<0.65?1:2)); // 零件掉落＝傷害
+    const isLast = BT.hitIdx===BT.hits.length-1;
+    battleMsg(isLast? '最終衝擊！零件四散！！' : '第 '+(BT.hitIdx+1)+' 次撞擊！零件剝落！');
+    BT.hitIdx++;
+  }
+  // 終極爆裂
+  if(!BT.exploded && t>=BT.explodeT){
+    BT.exploded=true;
+    explodeTop(BT.topL, BEYS[(G.loserNum===1?G.p1:G.p2).bey]);
+    battleMsg('💥 爆裂！！');
+    BT.shake=0.8;
+    beep(70,0.6,'sawtooth',0.35); beep(45,0.8,'square',0.25);
+  }
+  // 勝方移至中央＋勝利光環
+  if(BT.exploded && t>BT.explodeT+1.2 && !glowRing){
+    glowRing = new THREE.Mesh(new THREE.TorusGeometry(1.7,0.07,10,60),
+      new THREE.MeshStandardMaterial({color:0xffd24a, emissive:0xffb63d, emissiveIntensity:1.2, metalness:0.6, roughness:0.3}));
+    glowRing.rotation.x=Math.PI/2; glowRing.position.y=0.15; scene.add(glowRing);
+  }
+  if(glowRing){ glowRing.scale.setScalar(1+Math.sin(t*6)*0.12); glowRing.rotation.z+=dt*2; }
+  // 結束
+  if(!BT.done && t>=BT.endT){ BT.done=true; BT.active=false; setTimeout(showResult, 350); }
+}
+
+/* 零件掉落：血量視覺化——被撞擊的陀螺依序剝落零件 */
+function shedParts(top, n){
+  if(!top) return;
+  const still=top.userData.parts.filter(m=>m.parent===top);
+  for(let i=0;i<n && still.length;i++){
+    const m=still.splice(Math.floor(Math.random()*still.length),1)[0];
+    scene.attach(m);
+    const dir=m.position.clone().sub(top.position);
+    dir.y=0.4+Math.random()*0.7; dir.normalize();
+    m.userData.vel=dir.multiplyScalar(3+Math.random()*3.5);
+    m.userData.vel.y=2+Math.random()*3.5;
+    m.userData.av=new THREE.Vector3((Math.random()-0.5)*16,(Math.random()-0.5)*16,(Math.random()-0.5)*16);
+    debris.push(m);
+  }
+}
+function explodeTop(topGroup, bey){
+  topGroup.updateMatrixWorld(true);
+  const origin=topGroup.position.clone();
+  topGroup.children.slice().forEach(m=>{
+    scene.attach(m);
+    const wp=m.position.clone();
+    const dir=wp.clone().sub(origin); if(dir.lengthSq()<0.001) dir.set(Math.random()-0.5,0.6,Math.random()-0.5);
+    dir.normalize();
+    m.userData.vel=dir.multiplyScalar(2.5+Math.random()*4.5);
+    m.userData.vel.y=2.5+Math.random()*4.5;
+    m.userData.av=new THREE.Vector3((Math.random()-0.5)*14,(Math.random()-0.5)*14,(Math.random()-0.5)*14);
+    debris.push(m);
+  });
+  for(let i=0;i<12;i++){
+    const s=new THREE.Mesh(new THREE.TetrahedronGeometry(0.1+Math.random()*0.14), mat(bey.c1,0.8,0.4));
+    s.position.copy(origin).add(new THREE.Vector3((Math.random()-0.5)*0.6, 1+Math.random(), (Math.random()-0.5)*0.6));
+    s.userData.vel=new THREE.Vector3((Math.random()-0.5)*7, 2+Math.random()*5, (Math.random()-0.5)*7);
+    s.userData.av=new THREE.Vector3((Math.random()-0.5)*16,(Math.random()-0.5)*16,(Math.random()-0.5)*16);
+    scene.add(s); debris.push(s);
+  }
+  scene.remove(topGroup);
+  spawnSparks(origin.clone().add(new THREE.Vector3(0,1,0)), 140, 0xffa53d);
+  spawnSparks(origin.clone().add(new THREE.Vector3(0,1,0)), 60, 0xfff2c0);
+}
+function debrisUpdate(dt){
+  for(const m of debris){
+    const v=m.userData.vel;
+    v.y -= 13*dt;
+    m.position.addScaledVector(v, dt);
+    if(m.position.y < 0.14){ m.position.y=0.14; v.y*=-0.42; v.x*=0.75; v.z*=0.75; }
+    const av=m.userData.av;
+    m.rotation.x+=av.x*dt; m.rotation.y+=av.y*dt; m.rotation.z+=av.z*dt;
+  }
+}
+function sparksUpdate(dt){
+  for(let i=sparks.length-1;i>=0;i--){
+    const s=sparks[i]; s.life-=dt;
+    const arr=s.points.geometry.attributes.position.array;
+    for(let j=0;j<s.vel.length;j++){
+      arr[j*3]+=s.vel[j].x*dt; arr[j*3+1]+=s.vel[j].y*dt; arr[j*3+2]+=s.vel[j].z*dt;
+      s.vel[j].y-=9*dt;
+    }
+    s.points.geometry.attributes.position.needsUpdate=true;
+    s.points.material.opacity=Math.max(0, s.life/s.max);
+    if(s.life<=0){ scene.remove(s.points); s.points.geometry.dispose(); s.points.material.dispose(); sparks.splice(i,1); }
+  }
+}
+function clearBattleObjects(){
+  if(BT.topW){ scene.remove(BT.topW); BT.topW=null; }
+  if(BT.topL){ scene.remove(BT.topL); BT.topL=null; }
+  debris.forEach(m=>scene.remove(m)); debris=[];
+  sparks.forEach(s=>scene.remove(s.points)); sparks=[];
+  if(glowRing){ scene.remove(glowRing); glowRing=null; }
+  flashLight.intensity=0;
+}
+function updateHPBars(w,l){
+  // 參數 w/l 為「勝方/敗方」血量，需映射回 P1/P2
+  const p1hp = G.winnerNum===1? w : l;
+  const p2hp = G.winnerNum===2? w : l;
+  $('hpFill1').style.width=clamp(p1hp,0,100)+'%';
+  $('hpFill2').style.width=clamp(p2hp,0,100)+'%';
+  $('hpNum1').textContent=clamp(Math.round(p1hp),0,100)+' HP';
+  $('hpNum2').textContent=clamp(Math.round(p2hp),0,100)+' HP';
+}
+let msgTimer=null;
+function battleMsg(txt){
+  const el=$('battleMsg'); el.textContent=txt; el.style.opacity='1';
+  clearTimeout(msgTimer); msgTimer=setTimeout(()=>{ el.style.opacity='0'; }, 900);
+}
+
+/* ---- 主渲染迴圈 ---- */
+let camAngle=0;
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(), 0.05);
+  const t=clock.elapsedTime;
+  if(BT.active){ battleUpdate(dt); }
+  else if(BT.exploded && BT.done===false){ /* 戰後殘骸持續 */ }
+  else {
+    // 待機：展示陀螺慢轉＋鏡頭環繞
+    displayTops.forEach(tp=>{ tp.rotation.y += tp.userData.spinSpeed*dt; });
+  }
+  if(BT.topW && BT.active===false && BT.done){ BT.topW.rotation.y += 20*dt; if(glowRing) glowRing.rotation.z+=dt*2; }
+  debrisUpdate(dt); sparksUpdate(dt);
+  flashLight.intensity *= 0.86;
+  // 鏡頭
+  if(BT.active || BT.done){
+    camAngle += dt*0.12;
+    const r=13.2, shake=BT.shake; BT.shake*=0.9;
+    camera.position.set(
+      Math.sin(camAngle)*r + (Math.random()-0.5)*shake,
+      8.6 + (Math.random()-0.5)*shake,
+      Math.cos(camAngle)*r + (Math.random()-0.5)*shake);
+    camera.lookAt(0,0.8,0);
+  } else {
+    camAngle += dt*0.08;
+    camera.position.set(Math.sin(camAngle)*12.5, 8.8, Math.cos(camAngle)*12.5);
+    camera.lookAt(0,0.8,0);
+  }
+  renderer.render(scene, camera);
+}
+
+/* =========================================================
+   七、結局畫面
+   ========================================================= */
+function verdictCell(v, score){
+  const raw=(v.input||'').trim();
+  const shown=raw.length>42? raw.slice(0,42)+'…' : raw;
+  return '<span class="inpTxt">「'+escapeHtml(shown||'—')+'」</span><br>'+
+         '<span class="verd '+v.cls+'">'+v.label+' · '+score+' 分</span>';
+}
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function dimRow(label, key, dimName){
+  const a=G.p1.verdicts[key], b=G.p2.verdicts[key];
+  const sa=key==='event'?G.p1.speed:key==='person'?G.p1.power:G.p1.balance;
+  const sb=key==='event'?G.p2.speed:key==='person'?G.p2.power:G.p2.balance;
+  return '<tr><th>'+label+'<br><span style="font-weight:400;font-size:11px;color:#9fc4ff">'+dimName+'</span></th>'+
+    '<td>'+verdictCell(a, sa)+'</td><td>'+verdictCell(b, sb)+'</td></tr>';
+}
+function aiComment(pnum, key){
+  const p=G['p'+pnum], v=p.verdicts[key], t=G.target;
+  const label=key==='event'?'事件':key==='person'?'人物':'地點';
+  const score=key==='event'?p.speed:key==='person'?p.power:p.balance;
+  const correct=key==='event'?t.name:key==='person'?t.person:t.place;
+  const inp=escapeHtml((v.input||'').trim());
+  let s;
+  if(key==='event'){
+    if(score>=85)      s='描述詳實完整，時間、人物、經過、結果皆有涵蓋，展現紮實的史實掌握度';
+    else if(score>=65) s='描述相當詳細，已涵蓋事件 A 多數關鍵事實，可再補上時間或結果等細節';
+    else if(score>=45) s='「'+inp+'」僅略述事件 A 梗概，關鍵事實覆蓋不足，建議複習發生過程';
+    else if(score>0)   s='「'+inp+'」過於簡略或偏離事件 A 脈絡，請翻閱課文重新整理經過';
+    else               s='未作答，無法評分；建議複習目標事件的發生過程';
+  }
+  else if(score>=85)   s='答案「'+inp+'」'+(score===100?'與':'已涵蓋')+'標準答案「'+escapeHtml(correct)+'」，時空定位精準'+(score===100?'，給予滿分評價':'');
+  else if(score>=70)   s='方向正確，已掌握「'+escapeHtml(correct)+'」的核心線索，用字可再貼近標準名稱';
+  else if(score>=50)   s='「'+inp+'」與正解「'+escapeHtml(correct)+'」僅部分重疊，顯示概念尚在建立，建議複習相關段落';
+  else if(score>0)     s='「'+inp+'」與目標事件 A 脈絡關聯薄弱，正確答案為「'+escapeHtml(correct)+'」，請回到背景線索重思考';
+  else                 s='未作答，無法評分；正確答案為「'+escapeHtml(correct)+'」';
+  const bonusNote=(key==='event'&&p.bonus&&score<85)?'；所填事件與目標事件 A 屬同時期／因果關聯，另獲 +5% 相關度加成':'';
+  return '<div style="margin:6px 0"><b style="color:'+(pnum===1?'#ffd97a':'#9fdcff')+'">'+pnum+' 號玩家｜'+label+'欄 '+score+' 分：</b>'+s+bonusNote+'。</div>';
+}
+function showResult(){
+  $('hud').classList.add('hidden');
+  const w=G.winnerNum===1?G.p1:G.p2, l=G.loserNum===1?G.p1:G.p2;
+  const wb=BEYS[(G.winnerNum===1?G.p1:G.p2).bey], lb=BEYS[(G.loserNum===1?G.p1:G.p2).bey];
+  let titleTxt;
+  if(G.tiebreak==='random') titleTxt='⚖️ 總戰力與三項單項戰力完全相同！經亂數抽籤，由「'+G.winnerNum+' 號玩家」獲勝';
+  else if(G.tiebreak) titleTxt='⚖️ 總戰力平手！依「'+({speed:'速度',power:'力量',balance:'平衡'})[G.tiebreak]+'」單項戰力比對，由「'+G.winnerNum+' 號玩家」獲勝';
+  else titleTxt=(G.loserNum===1?'一號陀螺爆裂！':'二號陀螺爆裂！')+'「'+G.winnerNum+' 號玩家」獲勝！';
+  $('resTitle').textContent=titleTxt;
+  $('resSub').innerHTML = '🏆 勝方：<b style="color:#7dffb0">'+G.winnerNum+' 號玩家｜'+wb.name+'</b>（'+w.total+' 戰力）　💥 爆裂方：'+G.loserNum+' 號玩家｜'+lb.name+'（'+l.total+' 戰力）';
+  const rows =
+    '<table class="score"><tr><th style="width:22%">項目</th><th>🟡 一號玩家｜'+BEYS[G.p1.bey].name+'</th><th>🔵 二號玩家｜'+BEYS[G.p2.bey].name+'</th></tr>'+
+    dimRow('速度｜事件經過','event','你描述的經過')+
+    dimRow('力量｜人物','person','你輸入的歷史人物')+
+    dimRow('平衡｜地點','place','你輸入的發生地點')+
+    '<tr><th>相關度加成</th><td>'+(G.p1.bonus?'<span class="verd v-ok">符合高相關度 ✔ +5%</span>':'<span class="verd v-bad">未達標準 ✘</span>')+'</td>'+
+    '<td>'+(G.p2.bonus?'<span class="verd v-ok">符合高相關度 ✔ +5%</span>':'<span class="verd v-bad">未達標準 ✘</span>')+'</td></tr>'+
+    '<tr><th>陀螺能力加成<br><span style="font-weight:400;font-size:11px;color:#9fc4ff">各款獨特・總上限10%</span></th>'+
+    '<td style="color:#ffd97a;font-weight:700">'+boostText(BEYS[G.p1.bey])+'</td>'+
+    '<td style="color:#ffd97a;font-weight:700">'+boostText(BEYS[G.p2.bey])+'</td></tr>'+
+    '<tr class="totalRow"><th>最終總戰力</th><td class="'+(G.winnerNum===1?'winRow':'')+'">'+G.p1.total+' 分'+(G.winnerNum===1?' 🏆':'')+'</td>'+
+    '<td class="'+(G.winnerNum===2?'winRow':'')+'">'+G.p2.total+' 分'+(G.winnerNum===2?' 🏆':'')+'</td></tr></table>';
+  $('resTable').innerHTML=rows;
+  $('resComments').innerHTML='<h3>🤖 AI 評分解說（逐欄點評）</h3>'+
+    aiComment(1,'event')+aiComment(2,'event')+aiComment(1,'person')+aiComment(2,'person')+aiComment(1,'place')+aiComment(2,'place');
+  const t=G.target;
+  $('resAnalysis').innerHTML='<h3>📖 歷史知識解析｜'+escapeHtml(t.name)+'</h3>'+
+    '<b style="color:#ffd97a">📚 題目出處：</b>'+escapeHtml(t.source||'—')+'（建議翻閱複習）<br>'+
+    '<b style="color:#ffd97a">標準事件：</b>'+escapeHtml(t.name)+'（'+escapeHtml(t.era)+'）<br>'+
+    '<b style="color:#ffd97a">代表人物：</b>'+escapeHtml(t.person)+'<br>'+
+    '<b style="color:#ffd97a">發生地點：</b>'+escapeHtml(t.place)+'<br>'+
+    '<b style="color:#ffd97a">解析：</b>'+escapeHtml(t.analysis);
+  showScreen('scr-result');
+  beep(660,0.12,'square',0.15); setTimeout(()=>beep(880,0.2,'square',0.15),150);
+}
+
+/* =========================================================
+   八、遊戲流程控制
+   ========================================================= */
+const THUMBS=[];
+/* 用獨立 WebGL 情境把 10 款陀螺逐一渲染成預覽圖（只算一次並快取） */
+function ensureThumbs(){
+  if(THUMBS.length) return;
+  const size=160;
+  const r=new THREE.WebGLRenderer({antialias:true, alpha:true, preserveDrawingBuffer:true});
+  r.setSize(size,size); r.outputColorSpace=THREE.SRGBColorSpace;
+  const sc=new THREE.Scene();
+  sc.add(new THREE.HemisphereLight(0xa8c8ff,0x141824,1.15));
+  const d=new THREE.DirectionalLight(0xffffff,1.7); d.position.set(3,5,4); sc.add(d);
+  const cam=new THREE.PerspectiveCamera(34,1,0.1,20);
+  cam.position.set(2.7,2.3,2.7); cam.lookAt(0,0.55,0);
+  BEYS.forEach((b,i)=>{
+    const g=buildBey(b); g.scale.setScalar(1.15); sc.add(g);
+    r.render(sc,cam);
+    THUMBS[i]=r.domElement.toDataURL('image/png');
+    sc.remove(g);
+    g.traverse(o=>{
+      if(o.geometry) o.geometry.dispose();
+      if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(m.map) m.map.dispose(); m.dispose(); }); }
+    });
+  });
+  r.dispose();
+}
+/* ---- 發射器拉桿：由上往下拉，拉到底放開即發射 ---- */
+let launchDrag=null;
+function initLauncher(){
+  const h=$('launchHandle'), track=$('launchTrack');
+  const max=()=>Math.max(10, track.clientHeight-h.clientHeight-10);
+  h.addEventListener('pointerdown',e=>{
+    if(h.classList.contains('locked')) return;
+    launchDrag={y0:e.clientY, cur:h._cur||0};
+    try{ h.setPointerCapture(e.pointerId); }catch(_){ }
+    h.classList.add('dragging');
+    h.style.transition='none';
+    e.preventDefault();
+  });
+  h.addEventListener('pointermove',e=>{
+    if(!launchDrag) return;
+    const dy=e.clientY-launchDrag.y0+ (h._cur||0)*0; // 以按下點為基準
+    launchDrag.cur=Math.max(0,Math.min(max(), dy));
+    h._cur=launchDrag.cur;
+    h.style.transform='translateY('+launchDrag.cur+'px)';
+    const p=launchDrag.cur/max();
+    $('launchFill').style.height=(p*100)+'%';
+    const hint=$('launchHint');
+    if(p>0.75){ hint.textContent='🚀 放開發射！'; hint.style.color='#7dffb0'; }
+    else { hint.textContent='⬇ 繼續下拉 ⬇'; hint.style.color='#9fc4ff'; }
+  });
+  const end=()=>{
+    if(!launchDrag) return;
+    const p=launchDrag.cur/max();
+    h.classList.remove('dragging');
+    launchDrag=null;
+    if(p>0.75) fireLauncher();
+    else { h._cur=0; resetLauncher(true); }
+  };
+  h.addEventListener('pointerup',end);
+  h.addEventListener('pointercancel',end);
+}
+function resetLauncher(animate){
+  const h=$('launchHandle');
+  h.style.transition=animate?'transform .4s cubic-bezier(.2,1.7,.45,1)':'none';
+  h.style.transform='translateY(0px)';
+  h._cur=0;
+  $('launchFill').style.height='0%';
+}
+function lockLauncher(){
+  $('launchHandle').classList.add('locked');
+  $('launcher').classList.add('fired');
+  $('launchHint').textContent='✔ 已發射';
+  $('launchHint').style.color='#7dffb0';
+}
+function unlockLauncher(){
+  $('launchHandle').classList.remove('locked');
+  $('launcher').classList.remove('fired');
+}
+function fireLauncher(){
+  const p=G.curPlayer===1?G.p1:G.p2;
+  const h=$('launchHandle');
+  if(p.bey===null){ // 未選陀螺：抖動提示並彈回
+    $('launcherWrap').classList.remove('shake'); void $('launcherWrap').offsetWidth;
+    $('launcherWrap').classList.add('shake');
+    toast('請先選擇戰鬥陀螺！');
+    resetLauncher(true);
+    return;
+  }
+  // 拉到底：握把彈入底部、發射音效
+  h.style.transition='transform .15s ease-in';
+  h.style.transform='translateY('+maxPullPx()+'px)';
+  h._cur=maxPullPx();
+  $('launchFill').style.height='100%';
+  beep(160,0.28,'sawtooth',0.3); setTimeout(()=>beep(540,0.12,'square',0.2),110);
+  lockLauncher();
+  setTimeout(()=>{
+    if(NET.mode==='online') onlineReady(false);
+    else confirmSetup();
+  },230);
+}
+function maxPullPx(){ const t=$('launchTrack'), h=$('launchHandle'); return Math.max(10, t.clientHeight-h.clientHeight-10); }
+
+function renderBeyGrid(){
+  ensureThumbs();
+  const grid=$('beyGrid'); grid.innerHTML='';
+  BEYS.forEach((b,i)=>{
+    const c=document.createElement('div'); c.className='beyCard';
+    c.innerHTML='<img class="beyImg" alt="'+b.name+'" src="'+THUMBS[i]+'"><div class="bn">'+b.name+'</div><div class="be">'+b.en+'</div>'+
+      '<div style="font-size:10.5px;color:#ffd97a;margin-top:4px;font-weight:800;letter-spacing:.5px">⚡ '+boostText(b)+'</div>';
+    c.onclick=()=>{ grid.querySelectorAll('.beyCard').forEach(x=>x.classList.remove('sel')); c.classList.add('sel');
+      (G.curPlayer===1?G.p1:G.p2).bey=i; beep(500+i*40,0.06,'square',0.1); };
+    grid.appendChild(c);
+  });
+}
+function toSetup(playerNum){
+  G.curPlayer=playerNum;
+  const p=playerNum===1?G.p1:G.p2;
+  p.bey=null; p.inputs={event:'',person:'',place:''};
+  $('setupPill').textContent = playerNum===1?'🟡 一號玩家':'🔵 二號玩家';
+  $('setupPill').className='labelPill '+(playerNum===1?'p1':'p2');
+  $('setupTarget').textContent='「'+G.target.name+'」';
+  $('setupBg').textContent='📜 '+G.target.bg;
+  renderBeyGrid();
+  $('inpEvent').value=''; $('inpPerson').value=''; $('inpPlace').value='';
+  ['inpEvent','inpPerson','inpPlace'].forEach(id=>$(id).disabled=false);
+  $('readyStatus').textContent='';
+  unlockLauncher();
+  resetLauncher(false);
+  $('launchHint').textContent = NET.mode==='online' ? '⬇ 下拉準備射擊 ⬇' : '⬇ 下拉發射 ⬇';
+  $('launchHint').style.color='#9fc4ff';
+  showScreen('scr-setup');
+}
+function confirmSetup(){
+  if(NET.mode==='online'){ onlineReady(false); return; }
+  const p=G.curPlayer===1?G.p1:G.p2;
+  if(p.bey===null){ toast('請先選擇一款 3D 戰鬥陀螺！'); return; }
+  p.inputs={ event:$('inpEvent').value.trim(), person:$('inpPerson').value.trim(), place:$('inpPlace').value.trim() };
+  if(G.curPlayer===1){ showScreen('scr-handoff'); }
+  else { startBattle(); }
+}
+function nextRound(){
+  clearBattleObjects();
+  resetDisplayTops();
+  Object.assign(G,{target:null,tied:false});
+  ['p1','p2'].forEach(k=>{ G[k]={bey:null,inputs:{event:'',person:'',place:''},speed:0,power:0,balance:0,bonus:false,total:0,verdicts:null}; });
+  BT.done=false; BT.active=false; BT.exploded=false;
+  showScreen('scr-home');
+}
+
+/* ---- 檔案載入：JSON / CSV / TXT 歷史資料擴充資料庫 ---- */
+function handleFile(file){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    let added=0;
+    try{
+      const text=reader.result;
+      let rows=[];
+      const trimmed=text.trim();
+      if(trimmed.startsWith('[')||trimmed.startsWith('{')){
+        const j=JSON.parse(trimmed);
+        const arr=Array.isArray(j)?j:(j.events||j.data||[]);
+        rows=arr.map(o=>[o.name||o.名稱||'', o.person||o.人物||o.代表||'', o.place||o.地點||'', o.bg||o.background||o.背景||'']);
+      } else {
+        text.split(/\r?\n/).forEach(line=>{
+          const r=line.split(/[,，\t|]/).map(s=>s.trim());
+          if(r.length>=3 && r[0]) rows.push(r);
+        });
+      }
+      rows.forEach(r=>{
+        const name=r[0]; if(!name) return;
+        if(EVENTS.some(e=>norm(e.name)===norm(name))) return;
+        EVENTS.push({name:name, aliases:[], person:r[1]||'—', personAliases:[], place:r[2]||'—', placeAliases:[], era:'自訂', bg:r[3]||'（自訂資料）', analysis:'標準事件：'+name+'。代表人物：'+(r[1]||'—')+'。發生地點：'+(r[2]||'—')+'。', related:[], source:'自訂上傳資料'});
+        added++;
+      });
+      $('dbCount').textContent=EVENTS.length;
+      toast(added>0?('✅ 成功清洗並載入 '+added+' 筆事件，資料庫現共 '+EVENTS.length+' 筆！'):('⚠️ 無新資料（格式錯誤或重複），資料庫共 '+EVENTS.length+' 筆'));
+    }catch(e){ toast('❌ 檔案解析失敗：'+e.message); }
+  };
+  reader.readAsText(file);
+}
+
+/* ---- 綁定 ---- */
+function bind(){
+  $('dbCount').textContent=EVENTS.length;
+  $('btnStart').onclick=()=>{
+    ac();
+    G.target=EVENTS[Math.floor(Math.random()*EVENTS.length)];
+    $('evName').textContent='「'+G.target.name+'」';
+    $('evBg').textContent=G.target.bg;
+    $('btnToP1').textContent='一號玩家，請準備 ▸';
+    showScreen('scr-event'); beep(440,0.1,'square',0.12);
+  };
+  $('btnOnline').onclick=hostOnline;
+  $('btnJoinShow').onclick=showJoinScreen;
+  $('btnJoin').onclick=()=>joinById($('roomIdInput').value);
+  $('roomIdInput').addEventListener('keydown',e=>{ if(e.key==='Enter') joinById($('roomIdInput').value); });
+  $('btnCopyId').onclick=()=>{
+    const txt=$('hostId').textContent+( $('netUrl').textContent ? ('　'+$('netUrl').textContent) : '');
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(()=>toast('📋 已複製房間 ID')).catch(()=>toast(txt)); }
+    else toast(txt);
+  };
+  $('btnNetCancel').onclick=netCancel;
+  $('btnToP1').onclick=()=>{
+    if(NET.mode==='online'&&NET.isHost){ // 公布題目，雙方同步進入作答
+      const idx=EVENTS.indexOf(G.target);
+      const msg={type:'start', targetIdx:idx, dur:65000}; // 相時制：各自收到時起算，保證同步
+      try{ NET.conn.send(msg); }catch(e){}
+      onData(msg);
+      return;
+    }
+    toSetup(1);
+  };
+  initLauncher();
+  $('btnToP2').onclick=()=>toSetup(2);
+  $('btnNext').onclick=()=>{
+    if(NET.mode==='online'){
+      if(NET.isHost){
+        clearBattleObjects(); resetDisplayTops();
+        BT.active=false; BT.done=false; BT.exploded=false;
+        const idx=Math.floor(Math.random()*EVENTS.length);
+        const msg={type:'start', targetIdx:idx, dur:65000};
+        try{ NET.conn.send(msg); }catch(e){}
+        onData(msg);
+      } else { $('btnNext').textContent='等待房主開始下一局…'; $('btnNext').disabled=true; }
+      return;
+    }
+    nextRound();
+  };
+  $('btnFile').onclick=()=>$('fileInput').click();
+  $('fileInput').onchange=e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); e.target.value=''; };
+  ['inpEvent','inpPerson','inpPlace'].forEach(id=>{
+    $(id).addEventListener('keydown',e=>{ if(e.key==='Enter') fireLauncher(); });
+  });
+}
+
+window.addEventListener('error',e=>{ try{ toast('⚠ 錯誤：'+(e.message||'未知')); }catch(_){ } });
+initThree();
+bind();
+showScreen('scr-home');
+netInit();
+</script>
+</body>
+</html>
