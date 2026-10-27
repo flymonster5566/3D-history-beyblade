@@ -146,6 +146,8 @@
   .toast { position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:20;
     background:rgba(10,20,45,.95); border:1px solid #ffd97a; color:#ffe9a8; padding:10px 20px;
     border-radius:999px; font-size:13px; box-shadow:0 4px 20px rgba(0,0,0,.6); }
+  .verTag,.authorTag{ position:fixed; bottom:10px; z-index:2; font-size:12px; letter-spacing:1px; color:#8fb6ef; opacity:.9; pointer-events:none; }
+  .verTag{ left:14px; } .authorTag{ right:14px; }
 </style>
 <base target="_blank">
 <base target="_blank">
@@ -171,6 +173,7 @@
 
 <!-- 首頁 -->
 <div id="scr-home" class="screen">
+  <div class="verTag">V1.1</div><div class="authorTag">彰化縣芳苑國中曾晨皓老師</div>
   <div class="panel">
     <h1 class="logo">3D 歷史戰鬥陀螺</h1>
     <div class="sub">HISTORY BEYBLADE · 三維戰力評分版</div>
@@ -570,21 +573,34 @@ function showEventScreen(t, isHost){
     $('evWait').classList.toggle('hidden', isHost);
     $('btnToP1').textContent='⚔️ 開始戰鬥 ▸';
   } else {
-    $('evBg').classList.remove('hidden');
-    $('evSource').classList.add('hidden');
+    $('evBg').classList.add('hidden');
+    $('evSource').classList.remove('hidden');
+    $('evSource').textContent='📚 題目出處：'+(t.source||'—');
     $('evWait').classList.add('hidden');
     $('btnToP1').classList.remove('hidden');
-    $('evBg').textContent=t.bg;
     $('btnToP1').textContent='一號玩家，請準備 ▸';
   }
   showScreen('scr-event');
 }
 /* 第一題四選一：正解為目標事件背景，另取三筆事件背景作干擾項並洗牌 */
 function genEventOptions(){
-  const t=G.target;
-  const pool=EVENTS.filter(e=>e!==t);
-  for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const tmp=pool[i]; pool[i]=pool[j]; pool[j]=tmp; }
-  const opts=pool.slice(0,3).map(e=>e.bg); opts.push(t.bg);
+  const t=G.target, ti=EVENTS.indexOf(t);
+  const bi=x=>{ const n=norm(x), st=new Set(); for(let i=0;i<n.length-1;i++) st.add(n.slice(i,i+2)); return st; };
+  const tg=bi(t.bg);
+  /* 干擾項取自「最相似」的歷史事件：同章節、因果關聯、同時期、用字重疊高者優先 */
+  const cands=EVENTS.filter(e=>e!==t && e.bg!==t.bg).map(e=>{
+    const ei=EVENTS.indexOf(e); let sc=0;
+    if(e.source && e.source===t.source) sc+=3;
+    if((t.related||[]).includes(ei) || (e.related||[]).includes(ti)) sc+=3;
+    if(e.era===t.era) sc+=2;
+    const eg=bi(e.bg); let hit=0; eg.forEach(g=>{ if(tg.has(g)) hit++; });
+    sc+=hit/Math.max(1,Math.min(eg.size,tg.size))*10;
+    sc+=Math.random()*1.5;
+    return {e:e, sc:sc};
+  }).sort((x,y)=>y.sc-x.sc);
+  const opts=[];
+  for(const c of cands){ if(opts.length>=3) break; if(!opts.includes(c.e.bg)) opts.push(c.e.bg); }
+  opts.push(t.bg);
   for(let i=opts.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const tmp=opts[i]; opts[i]=opts[j]; opts[j]=tmp; }
   return opts;
 }
@@ -671,16 +687,11 @@ function computeScores(){
     p.verdicts = {event:sEv, person:sPe, place:sPl};
   });
   G.winRule=null; G.tiebreak=null; G.tied=false;
-  const boostedWins1 = G.p1.total > G.p2.base; // 加成後總戰力 壓過 對方未加成總戰力
-  const boostedWins2 = G.p2.total > G.p1.base;
-  if(boostedWins1 && !boostedWins2){ G.winnerNum=1; G.winRule='boosted'; }
-  else if(boostedWins2 && !boostedWins1){ G.winnerNum=2; G.winRule='boosted'; }
-  else if(G.p1.total === G.p2.total){
-    if(G.p1.speed!==G.p2.speed){ G.tiebreak='speed'; G.winnerNum=G.p1.speed>G.p2.speed?1:2; }
-    else if(G.p1.power!==G.p2.power){ G.tiebreak='power'; G.winnerNum=G.p1.power>G.p2.power?1:2; }
-    else if(G.p1.balance!==G.p2.balance){ G.tiebreak='balance'; G.winnerNum=G.p1.balance>G.p2.balance?1:2; }
-    else { G.tied=true; G.tiebreak='random'; G.winnerNum=Math.random()<0.5?1:2; }
-  } else { G.winnerNum = G.p1.total>G.p2.total?1:2; }
+  /* 判定順序：加成後總戰力 → 未加成總戰力 → 人物 → 地點 → 事件 → 亂數 */
+  const steps=[['',G.p1.total,G.p2.total],['base',G.p1.base,G.p2.base],['power',G.p1.power,G.p2.power],['balance',G.p1.balance,G.p2.balance],['speed',G.p1.speed,G.p2.speed]];
+  let decided=false;
+  for(const st of steps){ if(st[1]!==st[2]){ G.winnerNum=st[1]>st[2]?1:2; G.tiebreak=st[0]||null; decided=true; break; } }
+  if(!decided){ G.tied=true; G.tiebreak='random'; G.winnerNum=Math.random()<0.5?1:2; }
   G.loserNum = G.winnerNum===1?2:1;
 }
 
@@ -730,7 +741,7 @@ function buildArena(){
   arenaGroup = new THREE.Group(); scene.add(arenaGroup);
   // 盤面地板
   const floor = new THREE.Mesh(new THREE.CylinderGeometry(6.6,6.6,0.5,64),
-    new THREE.MeshStandardMaterial({color:0x0d1830, metalness:0.7, roughness:0.35}));
+    new THREE.MeshStandardMaterial({color:0xffffff, metalness:0.1, roughness:0.6}));
   floor.position.y=-0.25; arenaGroup.add(floor);
   // 盤面同心環
   [[2.2,0x2a6fd5],[4.2,0x1c4a9e],[6.0,0x3fa9ff]].forEach(([r,c],i)=>{
@@ -960,6 +971,7 @@ const BT = { active:false, t:0, hits:[], hitIdx:0, exploded:false, done:false,
              winnerHP:[], loserHP:[], nHits:5, shake:0, explodeT:6.2, endT:8.8 };
 
 function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function clampArena(p,R){ const d=Math.hypot(p.x,p.z); if(d>R){ p.x*=R/d; p.z*=R/d; } }
 function smooth(a,b,t){ const k=clamp((t-a)/(b-a||1),0,1); return k*k*(3-2*k); }
 function samplePos(keys,t){
   if(t<=keys[0].t) return keys[0].pos;
@@ -1006,7 +1018,7 @@ function genKeys(side, isWinner, stat, oppPow){
     keys.push({t:h.t, pos:h.point.clone()});
     const out=h.point.clone().add(new THREE.Vector3((Math.random()*2-1)*3.1*knock, 0, (Math.random()*2-1)*3.1*knock));
     out.lerp(new THREE.Vector3(0,0,0), pull);
-    out.x=clamp(out.x,-5.8,5.8); out.z=clamp(out.z,-5.8,5.8);
+    clampArena(out,5.5);
     keys.push({t:h.t+0.55, pos:out});
     cur=out.clone();
   });
@@ -1076,10 +1088,11 @@ function battleUpdate(dt){
       const amp = stat.spd/100*1.95*(BT.exploded?0.15:1);
       if(amp>0.03){
         const f = (3.5+stat.spd/12)*0.7; // 蛇行頻率減緩
-        tp.position.x = clamp(tp.position.x + Math.sin(t*f+i*2.1)*amp, -5.8, 5.8);
-        tp.position.z = clamp(tp.position.z + Math.cos(t*f*0.83+i*1.3)*amp, -5.8, 5.8);
+        tp.position.x += Math.sin(t*f+i*2.1)*amp;
+        tp.position.z += Math.cos(t*f*0.83+i*1.3)*amp;
       }
     }
+    if(!(BT.exploded&&i===1)) clampArena(tp.position,5.5);
     const base = (18 + stat.spd*0.14 + (i===0? BT.ratio*3 : 0))*0.72; // 自轉減緩
     tp.userData.spin += base*dt*(1+ (t<1.9? (1.9-t):0)*0.4);
     tp.rotation.y = tp.userData.spin;
@@ -1103,7 +1116,8 @@ function battleUpdate(dt){
     flashLight.position.copy(ip); flashLight.intensity=80+avgPow*1.8;
     BT.shake=0.12+avgPow/100*0.5;
     beep(140+Math.random()*60, 0.12,'sawtooth',0.3); beep(900,0.05,'square',0.12);
-    shedParts(BT.topL, BT.hitIdx===0?1:(Math.random()<0.65?1:2)); // 零件掉落＝傷害
+    shedParts(BT.topL, BT.hitIdx===0?1:(Math.random()<0.65?1:2)); // 零件掉落＝傷害（敗方每次必掉）
+    if(BT.hitIdx%2===1 || Math.random()<0.2) shedParts(BT.topW, 1); // 勝方也會掉落，但較少
     const isLast = BT.hitIdx===BT.hits.length-1;
     battleMsg(isLast? '最終衝擊！零件四散！！' : '第 '+(BT.hitIdx+1)+' 次撞擊！零件剝落！');
     BT.hitIdx++;
@@ -1172,6 +1186,7 @@ function debrisUpdate(dt){
     v.y -= 13*dt;
     m.position.addScaledVector(v, dt);
     if(m.position.y < 0.14){ m.position.y=0.14; v.y*=-0.42; v.x*=0.75; v.z*=0.75; }
+    { const d=Math.hypot(m.position.x,m.position.z); if(d>6.1){ const nx=m.position.x/d, nz=m.position.z/d; m.position.x=nx*6.1; m.position.z=nz*6.1; const vn=v.x*nx+v.z*nz; if(vn>0){ v.x-=1.5*vn*nx; v.z-=1.5*vn*nz; } } }
     const av=m.userData.av;
     m.rotation.x+=av.x*dt; m.rotation.y+=av.y*dt; m.rotation.z+=av.z*dt;
   }
@@ -1286,9 +1301,8 @@ function showResult(){
   const w=G.winnerNum===1?G.p1:G.p2, l=G.loserNum===1?G.p1:G.p2;
   const wb=BEYS[(G.winnerNum===1?G.p1:G.p2).bey], lb=BEYS[(G.loserNum===1?G.p1:G.p2).bey];
   let titleTxt;
-  if(G.winRule==='boosted') titleTxt='⚡「'+G.winnerNum+' 號玩家」加成後總戰力 '+w.total+' 分 壓制對方未加成總戰力 '+l.base+' 分，獲勝！';
-  else if(G.tiebreak==='random') titleTxt='⚖️ 總戰力與三項單項戰力完全相同！經亂數抽籤，由「'+G.winnerNum+' 號玩家」獲勝';
-  else if(G.tiebreak) titleTxt='⚖️ 總戰力平手！依「'+({speed:'速度',power:'力量',balance:'平衡'})[G.tiebreak]+'」單項戰力比對，由「'+G.winnerNum+' 號玩家」獲勝';
+  if(G.tiebreak==='random') titleTxt='⚖️ 總戰力與三項單項戰力完全相同！經亂數抽籤，由「'+G.winnerNum+' 號玩家」獲勝';
+  else if(G.tiebreak) titleTxt='⚖️ 前項戰力平手！依「'+({base:'未加成總戰力',power:'人物（力量）',balance:'地點（平衡）',speed:'事件（速度）'})[G.tiebreak]+'」比較，由「'+G.winnerNum+' 號玩家」獲勝';
   else titleTxt=(G.loserNum===1?'一號陀螺爆裂！':'二號陀螺爆裂！')+'「'+G.winnerNum+' 號玩家」獲勝！';
   $('resTitle').textContent=titleTxt;
   $('resSub').innerHTML = '🏆 勝方：<b style="color:#7dffb0">'+G.winnerNum+' 號玩家｜'+wb.name+'</b>（'+w.total+' 戰力）　💥 爆裂方：'+G.loserNum+' 號玩家｜'+lb.name+'（'+l.total+' 戰力）';
@@ -1302,7 +1316,7 @@ function showResult(){
     '<tr><th>陀螺能力加成<br><span style="font-weight:400;font-size:11px;color:#9fc4ff">各款獨特・總上限10%</span></th>'+
     '<td style="color:#ffd97a;font-weight:700">'+boostText(BEYS[G.p1.bey])+'</td>'+
     '<td style="color:#ffd97a;font-weight:700">'+boostText(BEYS[G.p2.bey])+'</td></tr>'+
-    '<tr><th>未加成總戰力<br><span style="font-weight:400;font-size:11px;color:#9fc4ff">三維原始合計・勝負判定基準</span></th><td style="font-weight:700">'+G.p1.base+' 分</td><td style="font-weight:700">'+G.p2.base+' 分</td></tr>'+
+    '<tr><th>未加成總戰力<br><span style="font-weight:400;font-size:11px;color:#9fc4ff">三維原始合計・平手時第二順位</span></th><td style="font-weight:700">'+G.p1.base+' 分</td><td style="font-weight:700">'+G.p2.base+' 分</td></tr>'+
     '<tr class="totalRow"><th>最終總戰力</th><td class="'+(G.winnerNum===1?'winRow':'')+'">'+G.p1.total+' 分'+(G.winnerNum===1?' 🏆':'')+'</td>'+
     '<td class="'+(G.winnerNum===2?'winRow':'')+'">'+G.p2.total+' 分'+(G.winnerNum===2?' 🏆':'')+'</td></tr></table>';
   $('resTable').innerHTML=rows;
@@ -1442,7 +1456,7 @@ function toSetup(playerNum){
   $('setupPill').textContent = playerNum===1?'🟡 一號玩家':'🔵 二號玩家';
   $('setupPill').className='labelPill '+(playerNum===1?'p1':'p2');
   $('setupTarget').textContent='「'+G.target.name+'」';
-  $('setupBg').textContent='📜 '+G.target.bg;
+  $('setupBg').textContent=''; $('setupBg').classList.add('hidden');
   renderBeyGrid();
   renderEventOptions();
   $('inpEvent').value=''; $('inpPerson').value=''; $('inpPlace').value='';
